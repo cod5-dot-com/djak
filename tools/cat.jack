@@ -1,0 +1,102 @@
+/* 
+ *             The authors disclaim copyright to this software.
+ */
+
+class cat
+{
+field file fin;
+field file fout;
+field string sin;
+field string sout;
+field int index;
+field int size;
+
+const int BLOCKSIZE := 4096;
+
+constructor cat new(in string sin1, in string sout1)
+{
+	fin := file.new("");
+	fout := file.new("");
+	sin := sin1;
+	sout := sout1;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.delete(fin);
+	std.delete(fout);
+	std.free(this);
+	return;
+}
+
+method void process_data(in int status, in int type, in bytes data)
+{
+	if (status != 200 || type != 1) {
+		if (type == 0) {
+			console.log(data);
+		} else {
+			console.log("Unknown error reading file");
+		}
+		std.exit(-1);
+	}
+	size := data.get_size();
+	if (size < 1) {
+		return 0;
+	}
+	fout.write(sout, data, type, index, size, {
+		if (status != 200) {
+			console.log("Error writing file");
+			std.exit(-1);
+		}
+		if (size < cat.$BLOCKSIZE) {
+			return 0;
+		}
+		return read_block();
+	});
+	return 0;
+}
+
+method int read_block()
+{
+	index := index + size;
+	fin.read(sin, index, cat.$BLOCKSIZE, {
+		return process_data(status, type, data);
+	});	
+	return 0;
+}
+
+method void run()
+{
+	index := 0;
+	size := 0;
+	read_block();
+	return;
+}
+
+} // class
+
+
+class main
+{
+
+function void main()
+{
+	var cat c;
+	var array args;
+	var int n;
+	args := std.get_args();
+	n := std.get_argc();
+
+	if (n < 2) {
+		console.log("Usage: cat <file_name>");
+		std.exit(-1);
+	}
+	c := cat.new(args[1], "/dev/stdout");
+	c.run();
+	std.loop();
+	std.delete(c);
+	return;
+}
+
+} // class

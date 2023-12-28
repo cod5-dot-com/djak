@@ -1,0 +1,74 @@
+
+class t_switch {
+
+const int b := 4;
+
+constructor t_switch new()
+{
+	return this;
+}
+
+virtual void dispose()
+{
+	std.free(this);
+	return;
+}
+
+
+method int letsgo(in int a)
+{
+	var string b;
+
+	b := null;
+
+	a := a + 1;
+	if (a == 3) {
+		return 3;
+	} else if (a == 5) {
+		return -4;
+	} else if (a == 4) {
+		return -1;
+	} else {
+		return -a;
+	}
+
+	a := a + t_switch.$b;
+
+	if (30 == a) {
+		a := 1;
+	} else if (a == t_switch.$b) {
+		a := 2;
+	} else if (34 == a || 35 == a) {
+		a := 4;
+	} else if (a == 33) {
+		a := 5;
+	}
+
+	if (30 == b) {
+		a := 1;
+	} else if (b == t_switch.$b) {
+		a := 2;
+	} else if (34 == b) {
+		a := 4;
+	} else if (b == 33) {
+		a := 5;
+	} else {
+		a := 90;
+	}
+	return 0;
+}
+
+function void test()
+{
+	var t_switch t;
+	main.start("t_switch");
+		
+	t := t_switch.new();
+	t.letsgo(2);
+	std.delete(t);
+	main.pass("OK");
+	return;
+}
+
+}
+

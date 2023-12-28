@@ -1,0 +1,63 @@
+
+class alu {
+constructor alu new() 
+{
+	return this;
+}
+
+virtual void dispose()
+{
+	return;
+}
+
+method void always(out wire c, in wire op, in wire a, in wire b)
+{
+	var wire w;
+	var wire zero;
+	var wire op0;
+	var wire op1;
+	var wire op2;
+	var wire op3;
+	var wire op4;
+	var wire op5;
+	var wire op6;
+	var wire op7;
+	var wire op8;
+
+	w := c.width();
+	op0 := wire.d(w, "op0", 0);
+	op1 := wire.d(w, "op1", 0);
+	op2 := wire.d(w, "op2", 0);
+	op3 := wire.d(w, "op3", 0);
+	op4 := wire.d(w, "op4", 0);
+	op5 := wire.d(w, "op5", 0);
+	op6 := wire.d(w, "op6", 0);
+	op7 := wire.d(w, "op7", 0);
+	op8 := wire.d(w, "op8", 0);
+	zero := wire.c("00000 00000 00000 00000 00000 00000 00");
+	
+	wire.add3(op0, a, b);
+	wire.sub3(op1, a, b);
+	wire.shift3(op2, a, b);
+	wire.cons3(op3, a, b);
+	wire.any3(op4, a, b);
+	wire.xor3(op5, a, b);
+	wire.buf3(op6, b);
+	wire.not3(op7, b);
+	wire.buf3(op8, zero);
+
+	wire.mux93(c, op,
+		op0, op1, op2,
+		op3, op4, op5,
+		op6, op7, op8);
+		
+	return;
+}
+
+virtual void clock()
+{
+	return;
+}
+
+}
+

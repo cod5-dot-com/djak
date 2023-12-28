@@ -1,5 +1,32 @@
+/*
+ *          MMXXIII December 15 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
 
-class Amember {
+class Amember
+{
 field int kind;
 field int type;
 field Atoken type_id;
@@ -9,42 +36,131 @@ field int index;
 field buffer params;
 field buffer vars;
 field buffer body;
-field buffer ir;
+field int own;
 
-constructor Amember new(in int kind_, in int type_, 
-	in Atoken type_id_, in Atoken name_)
+constructor Amember new(in int kind1, in int type1,
+			in Atoken type_id1, in Atoken name1)
 {
-	kind := kind_;
-	type := type_;
-	type_id := type_id_;
-	name := name_;
+	own := 0;
+	kind := kind1;
+	type := type1;
+	name := name1;
+	type_id := type_id1;
 	initial_value := null;
 	index := -1;
 	params := null;
 	vars := null;
 	body := null;
-	ir := null;
 	return this;
 }
 
 virtual void dispose()
 {
-	dispose_body();
-	// FIXME
+	if (own) {
+		std.delete(name);
+		std.delete(type_id);
+	}
+	std.delete(params);
+	params := null;
+	std.delete(body);
+	body := null;
+	std.delete(vars);
+	vars := null;
 	std.free(this);
+	return;
+}
+
+
+method Amember copy()
+{
+	var buffer cp;
+	var Amember m;
+	var Amember o;
+	var Amember t;
+
+	cp := buffer.new(64, 0);
+	m := pre_copy(cp);
+	while (cp.length() > 0) {
+		t := cp.pop();
+		o := cp.pop();
+		o.copy_params(t, cp);
+	}
+
+	std.delete(cp);
+	return m;
+}
+
+method Amember pre_copy(in buffer cp)
+{
+	var Atoken id;
+	var Atoken n;
+	var Amember m;
+	var buffer p;
+	var int l;
+
+	if (type_id != null) {
+		id := type_id.copy();
+	} else {
+		id := null;
+	}
+	if (name != null) {
+		n := name.copy();
+	} else {
+		n := null;
+	}
+	m := Amember.new(kind, type, id, n);
+	m.take();
+
+	p := get_params();
+	if (p == null) {
+		return m;
+	}
+	l := p.length();
+	if (l < 1) {
+		return m;
+	}
+	cp.push(m);
+	cp.push(this);
+	return m;
+}
+
+method void take()
+{
+	std.move(type_id);
+	std.move(name);
+	own := 1;
+	return;
+}
+
+method void copy_params(in Amember o, in buffer cp)
+{
+	var int l;
+	var buffer p;
+	var Amember m;
+
+	p := o.get_params();
+	if (p == null) {
+		return;
+	}
+	l := p.length();
+	if (l < 1) {
+		return;
+	}
+	params := buffer.new(l, 1);
+	while (l > 0) {
+		l := l - 1;
+		m := p.get_at(l);
+		params.set_at(l, m.pre_copy(cp));
+	}
 	return;
 }
 
 method void dispose_body()
 {
-	if (body != null) {
-		body.dispose();
-		body := null;
-	}
-	if (vars != null) {
-		vars.dispose();
-		vars := null;
-	}
+	std.delete(body);
+	body := null;
+	std.delete(vars);
+	vars := null;
 	return;
 }
 
@@ -68,26 +184,26 @@ method Atoken get_name()
 	return name;
 }
 
-method Atoken get_name_string()
+method string get_name_string()
 {
 	return name.get_data();
 }
 
 
-method Atoken get_initial_value() 
+method Atoken get_initial_value()
 {
 	return initial_value;
 }
 
-method void set_initial_value(in Atoken initial_value_)
+method void set_initial_value(in Atoken initial_value1)
 {
-	initial_value := initial_value_;
+	initial_value := initial_value1;
 	return;
 }
 
-method void set_index(in int index_)
+method void set_index(in int index1)
 {
-	index := index_;
+	index := index1;
 	return;
 }
 
@@ -101,12 +217,6 @@ method buffer get_body()
 	return body;
 }
 
-method buffer get_ir()
-{
-	return ir;
-}
-
-
 method buffer get_vars()
 {
 	return vars;
@@ -118,39 +228,37 @@ method buffer get_params()
 	return params;
 }
 
-method void add_param(in int kind_, in int type_, 
-	in Atoken type_id_, in Atoken name_)
+method void add_param(in int kind1, in int type1,
+		      in Atoken type_id1, in Atoken name1)
 {
 	var Amember p;
 	if (params == null) {
-		params := buffer.new(4);
+		params := buffer.new(4, 1);
 	}
-        p := Amember.new(kind_, type_, type_id_, name_);
-
+	p := Amember.new(kind1, type1, type_id1, name1);
 	params.push(p);
 	return;
 }
 
-method void add_var(in int kind_, in int type_, 
-	in Atoken type_id_, in Atoken name_)
+method void add_var(in int kind1, in int type1,
+		    in Atoken type_id1, in Atoken name1)
 {
 	var Amember p;
 	if (vars == null) {
-		vars := buffer.new(4);
+		vars := buffer.new(4, 1);
 	}
-        p := Amember.new(kind_, type_, type_id_, name_);
-
+	p := Amember.new(kind1, type1, type_id1, name1);
 	vars.push(p);
 	return;
 }
 
-method Astatement add_statement(in Astatement statement_)
+method Astatement add_statement(in Astatement statement1)
 {
 	if (body == null) {
-		body := buffer.new(4);
+		body := buffer.new(4, 1);
 	}
-	body.push(statement_);
-	return statement_.get_parent();
+	body.push(statement1);
+	return statement1.get_parent();
 }
 
 } // class

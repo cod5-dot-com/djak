@@ -1,26 +1,51 @@
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
 
-class Aexpr {
+class Aexpr
+{
 field int op;
 field int prec;
 field int asso;
 field Aexpr left;
 field Aexpr right;
 field Aexpr parent;
-field string value;
 field string value2;
 field int flags;
 field Atoken origin;
 field buffer data;
 
-constructor Aexpr new(in int op_, in int precedence_, in int associativity_)
+constructor Aexpr new(in int op1, in int precedence1, in int associativity1)
 {
-	op := op_;
-	prec := precedence_;
-	asso := associativity_;
+	op := op1;
+	prec := precedence1;
+	asso := associativity1;
 	parent := null;
 	left := null;
 	right := null;
-	value := null;
 	value2 := null;
 	flags := 0;
 	origin := null;
@@ -30,15 +55,23 @@ constructor Aexpr new(in int op_, in int precedence_, in int associativity_)
 
 virtual void dispose()
 {
+	std.delayed_delete(this);
+	return;
+}
+
+virtual void delayed_dispose()
+{
+	std.delete(left);
+	std.delete(right);
+	std.delete(value2);
+	std.delete(data);
 	std.free(this);
 	return;
 }
 
 method void clear_data()
 {
-	if (data != null) {
-		data.dispose();
-	}
+	std.delete(data);
 	data := null;
 	return;
 }
@@ -52,7 +85,7 @@ method void add_data(in string value)
 		return;
 	}
 	if (data == null) {
-		data := buffer.new(3);
+		data := buffer.new(3, 0);
 	}
 	data.push(value);
 	return;
@@ -71,7 +104,7 @@ method void merge_data(in buffer buf)
 		l := buf.length();
 	}
 	if (data == null) {
-		data := buffer.new(l);	
+		data := buffer.new(l, 0);
 	}
 	if (buf == null) {
 		return;
@@ -116,7 +149,7 @@ method Aexpr get_right()
 
 method void set_right(in Aexpr r)
 {
-	right := r;
+	right := std.move(r);
 	return;
 }
 
@@ -128,7 +161,7 @@ method Aexpr get_left()
 
 method void set_left(in Aexpr l)
 {
-	left := l;
+	left := std.move(l);
 	return;
 }
 
@@ -164,13 +197,9 @@ method string get_value()
 
 method void set_value(in string v)
 {
-	// FIXME
-	if (data != null) {
-		data.dispose();
-	}
-	data := buffer.new(1);
+	std.delete(data);
+	data := buffer.new(1, 0);
 	data.push(v);
-	//value := v;
 	return;
 }
 
@@ -190,23 +219,26 @@ method void set_flags(in int flags_)
 	return;
 }
 
-method void set_precedence(in int p) {
+method void set_precedence(in int p)
+{
 	prec := p;
 	return;
 }
 
-method void get_precedence() {
+method void get_precedence()
+{
 	return prec;
 }
 
-method void get_associativity() {
+method void get_associativity()
+{
 	return asso;
 }
 
 
 method Aexpr close(in int op_)
 {
-	
+
 	var Aexpr cur;
 	cur := this;
 	while (cur != null) {
@@ -279,15 +311,149 @@ method void dump(in int depth)
 		i := i - 1;
 		console.log_str(" ");
 	}
-	if (value != 0) {
-		console.log_str(value);
-	}
+
+	console.log_str(get_value());
+	console.log_str(" ");
 	console.log_int(op);
 	console.log("");
 	if (right != null) {
 		right.dump(depth + 1);
 	}
 	return;
+}
+
+method Aexpr is_equal_comp1(in string v)
+{
+	var int l;
+	var int r;
+
+	if (op == Aclass.$Cequal) {
+		l := left.get_op();
+		r := right.get_op();
+		if (l == Aclass.$Cvar) {
+			if (r == Aclass.$Cint_const || r == Aclass.$Cconstant) {
+				if (v == null || v == left.get_value()) {
+					return left;
+				}
+			}
+		} else if (r == Aclass.$Cvar) {
+			if (l == Aclass.$Cint_const || l == Aclass.$Cconstant) {
+				if (v == null || v == right.get_value()) {
+					return right;
+				}
+			}
+		}
+		return null;
+	}
+	return null;
+}
+
+
+method Aexpr get_case_expr1()
+{
+	var int l;
+	var int r;
+	var Aexpr o;
+
+	o := null;
+	if (op == Aclass.$Cequal) {
+		l := left.get_op();
+		r := right.get_op();
+		if (l == Aclass.$Cvar) {
+			o := right;
+		} else if (r == Aclass.$Cvar) {
+			o := left;
+		}
+		return o;
+	}
+	return null;
+}
+
+method Aexpr get_switch_expr()
+{
+	return right.is_equal_comp1(null);
+}
+
+method Aexpr get_case_expr(in int pos)
+{
+	var int opi;
+	var int n;
+	var Aexpr o;
+	var buffer stack;
+
+	if (right.get_op() == Aclass.$Cequal) {
+		if (pos == 0) {
+			return right.get_case_expr1();
+		}
+		return null;
+	}
+	stack := buffer.new(5,0);
+	stack.push(right);
+	n := 0;
+	while (stack.length() > 0) {
+		o := stack.pop();
+		opi := 0;
+		if (o != null) {
+			opi := o.get_op();
+		}
+		if (opi == Aclass.$Clogicalor) {
+			stack.push(o.get_right());
+			stack.push(o.get_left());
+		} else if (opi == Aclass.$Cequal) {
+			o := o.get_case_expr1();
+			if (o != null && n == pos) {
+				std.delete(stack);
+				return o;
+			}
+			n := n + 1;
+		}
+	}
+	std.delete(stack);
+	return null;
+}
+
+method string is_equal_comp(in string v)
+{
+	var Aexpr ret;
+	var int opi;
+	var Aexpr o;
+	var buffer stack;
+
+	ret := null;
+	if (right != null && op == Aclass.$Croot) {
+		if (right.get_op() == Aclass.$Clogicalor) {
+			stack := buffer.new(5,0);
+			stack.push(right.get_right());
+			stack.push(right.get_left());
+			while (stack.length() > 0) {
+				o := stack.pop();
+				opi := 0;
+				if (o != null) {
+					opi := o.get_op();
+				}
+				if (opi == Aclass.$Clogicalor) {
+					stack.push(o.get_right());
+					stack.push(o.get_left());
+				} else if (opi == Aclass.$Cequal) {
+					ret := o.is_equal_comp1(v);
+					if (ret == null) {
+						std.delete(stack);
+						return null;
+					}
+				} else {
+					std.delete(stack);
+					return null;
+				}
+			}
+			std.delete(stack);
+		} else {
+			ret := right.is_equal_comp1(v);
+		}
+	}
+	if (ret == null) {
+		return null;
+	}
+	return ret.get_value();
 }
 
 } // class

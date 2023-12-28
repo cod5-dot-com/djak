@@ -1,0 +1,72 @@
+
+class main {
+field file f;
+const string HELLO := "hello";
+
+
+constructor main new()
+{
+	f := file.new("./");
+	return this;
+}
+
+virtual void dispose()
+{
+	std.delete(f);
+	std.free(this);
+	return;
+}
+
+function void main()
+{
+	var main m;
+	m := main.new();
+	console.log("Hello World!");
+	
+	m.test();
+	console.log("iHello World!");
+	
+	std.loop();
+	std.delete(m);
+	return;
+}
+
+method void this_is_ok(in bytes s)
+{
+	var string st;
+	var int si;
+	var int i;
+
+	si := s.get_size();
+	st := string.new(si + 1);
+	i := 0;
+	while (i < si) {
+		st.add_char(s.get_at(i));
+		i := i + 1;
+	}	
+	console.log(st);
+	std.delete(st);
+	return;
+}
+
+method void test()
+{
+
+	f.read("README.md", 0, 120, {
+		if (status == 200) {
+			console.log("ioio megamix");
+			this_is_ok(data);
+		} else if (status >= 400) {
+			console.log("ERROR");
+			console.log(data);
+			std.exit(-1);
+		}
+		return 0;
+	});
+
+	console.log("test");
+	return;
+}
+
+}
+

@@ -25,25 +25,47 @@
  * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
  */
 
-class array
+class worker
 {
-field int dummy;
+field int status;
+field object data;
+field worker lambda_this;
+field int lambda;
+field int type;
 
-function array new(in int size, in object __parent)
+constructor worker new(in object lambda_this_, in int lambda_,
+		       in int status_, in object data_, in int type_)
 {
-	var array a;
-	if (size < 1) {
-		console.log("Size less than one");
-		std.panic();
+	type := type_;
+	lambda_this := lambda_this_;
+	lambda := lambda_;
+	status := status_;
+	if (type != 1) {
+		data := std.move(data_);
+	} else {
+		data := data_;
 	}
-	a := std.alloc(size, __parent, array.$_DcidD);
-	return a;
+	std.push_worker(this);
+	return this;
 }
 
 virtual void dispose()
 {
+	if (data) {
+		if (type == 1) {
+			std.bytes_dispose(data);
+		} else {
+			std.delete(data);
+		}
+		data := null;
+	}
 	std.free(this);
 	return;
+}
+
+method int process()
+{
+	return std.lambda(lambda_this, lambda, status, data, type);
 }
 
 } // class

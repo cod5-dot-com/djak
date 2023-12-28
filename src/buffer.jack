@@ -1,11 +1,41 @@
-class buffer {
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
+
+class buffer
+{
 field array _arr;
 field int size;
 field int pos;
+field int take;
 
-constructor buffer new(in int initial_size)
+constructor buffer new(in int initial_size, in int take_)
 {
 	var int i;
+	take := take_;
 	_arr := array.new(initial_size);
 	size := initial_size;
 	pos := 0;
@@ -17,29 +47,25 @@ constructor buffer new(in int initial_size)
 	return this;
 }
 
-method void dispose_all()
+virtual void delayed_dispose()
 {
 	var int i;
-	if (_arr == null) {
-		dispose();
-		return;
+	if (_arr != null && take != 0) {
+		i := 0;
+		while (i < pos) {
+			delete_at(i);
+			i := i + 1;
+		}
 	}
-	i := 0;
-	while (i < size) {
-		std.delete(_arr[i]);
-		i := i + 1;
-	}
-	dispose();
+	std.delete(_arr);
+	_arr := null;
+	std.free(this);
 	return;
 }
 
 virtual void dispose()
 {
-	if (_arr != null) {
-		_arr.dispose();
-		_arr := null;
-	}
-	std.free(this);
+	std.delayed_delete(this);
 	return;
 }
 
@@ -56,14 +82,22 @@ method int empty()
 	return 1;
 }
 
+method void delete_at(in int idx)
+{
+	std.delete(_arr[idx]);
+	_arr[idx] := null;
+	return;
+}
+
 method void set_at(in int idx, in array elem)
 {
 	var array a;
 	var int i;
-	if (idx >= size) {
+
+	if ((idx + 1) >= size) {
 		a := array.new(idx + 8);
 		i := 0;
-		while (i < size) {
+		while (i < pos) {
 			a[i] := _arr[i];
 			i := i + 1;
 		}
@@ -75,17 +109,25 @@ method void set_at(in int idx, in array elem)
 
 		_arr.dispose();
 		_arr := a;
+	} else if (take != 0 && idx < pos) {
+		delete_at(idx);
 	}
 
+	if (take != 0) {
+		std.move(elem);
+	}
+	while (pos < idx) {
+		_arr[pos] := 0;
+		pos := pos + 1;
+	}
 	_arr[idx] := elem;
-	if ((idx + 1) > pos) {
+	if (idx >= pos) {
 		pos := idx + 1;
 	}
-
 	return;
 }
 
-method void get_at(in int idx) 
+method void get_at(in int idx)
 {
 	return _arr[idx];
 }
@@ -105,7 +147,6 @@ method void append(in buffer buf)
 	var int j;
 	j := buf.length();
 	l := length() + j;
-	pos := l;
 	while (j > 0) {
 		l := l - 1;
 		j := j - 1;
@@ -135,10 +176,11 @@ method array get_last()
 method array pop()
 {
 	var array elem;
+
 	elem := null;
 	if (pos > 0) {
+		elem := get_at(pos - 1);
 		pos := pos - 1;
-		elem := get_at(pos);
 	}
 	return elem;
 }
@@ -147,6 +189,7 @@ method void unshift(in array elem)
 {
 	var int i;
 	var int p;
+
 	p := pos + 1;
 	set_at(pos, 0); // create space
 	i := pos;
@@ -164,18 +207,18 @@ method array shift()
 	var array elem;
 	var int i;
 	var int p;
+
 	if (pos < 1) {
 		return null;
 	}
 	p := pos - 1;
 	elem := get_at(0);
 	i := 0;
-	while (i < pos) {
+	while (i < p) {
 		_arr[i] := _arr[i + 1];
 		i := i + 1;
 	}
 	pos := p;
-	
 	return elem;
 }
 

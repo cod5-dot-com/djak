@@ -1,5 +1,5 @@
 
-zeudjak is a public domain open source project.
+Just A C Kit 3.0.3
 
 	https://www.cod5.com
 
@@ -9,7 +9,7 @@ AUTHORS
 CORE DEVELOPERS:
 ----------------
  
- - Jean-Marc Lienher <jean-marc.lienher@bluewin.ch>
+ - Jean-Marc Lienher <oksid@bluewin.ch>
 
 
 CONTRIBUTORS:

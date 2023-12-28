@@ -1,0 +1,35 @@
+
+class fetch {
+constructor fetch new() 
+{
+	return this;
+}
+
+virtual void dispose()
+{
+	return;
+}
+
+method void always(out wire ir, out wire d)
+{
+	var wire word;
+	var wire mask5;
+
+	// FIXME read ROM data
+	word := wire.c("+-+++++--+-+-0");
+	
+	mask5 := wire.c("00000 00000 00000 00000 00000 00--- --");
+	wire.xor3(ir, word, mask5);
+
+	wire.shift3(d, word, wire.c("0-++"));	
+
+	return;
+}
+
+virtual void clock()
+{
+	return;
+}
+
+}
+

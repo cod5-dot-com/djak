@@ -1,4 +1,32 @@
-class Aclass {
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
+
+class Aclass
+{
 field Atoken tok;
 field Aclass next;
 
@@ -6,10 +34,13 @@ field int prep_kind;
 field int prep_type;
 field Atoken prep_type_id;
 field Atoken prep_name;
-field buffer implement;
+field buffer implements;
 field buffer members;
 field Amember member;
 field int field_index;
+
+field buffer lambda_stack;
+field int nb_lambda;
 
 field Astatement statement;
 field buffer stm_stack;
@@ -17,6 +48,8 @@ field buffer stm_stack;
 field Aexpr expression;
 field Aexpr cur_expr;
 field string expr_id;
+
+field buffer garbage_pool;
 
 const int Cstatic := 2;
 const int Cfield := 3;
@@ -46,6 +79,17 @@ const int Cnull := 26;
 const int Cint_const := 27;
 const int Cchar_const := 28;
 const int Cstr_const := 29;
+//const int Csuper := 30;
+//const int Crecursive := 31;
+const int Casync := 32;
+const int Cawait := 33;
+const int Clambda := 34;
+const int Cnew_wrap := 35;
+const int Ccase := 36;
+const int Cswitch := 37;
+const int Cifblock := 38;
+const int Cswitchblock := 39;
+const int Cdefault := 40;
 
 const int Croot := 1000;
 const int Cequal := 1026;
@@ -80,20 +124,43 @@ constructor Aclass new(in Atoken token)
 {
 	tok := token;
 	next := null;
-	members := buffer.new(256);
-	implement := buffer.new(1);
+	members := buffer.new(256, 1);
+	implements := buffer.new(1, 0);
+	garbage_pool := buffer.new(100, 1);
 	field_index := -1;
 	statement := null;
-	stm_stack := buffer.new(2);
+	stm_stack := buffer.new(2,0);
+	lambda_stack := buffer.new(2,0);
+	nb_lambda := 0;
 	expression := null;
+	prep_type_id := null;
+	prep_name := null;
 	return this;
 }
 
 virtual void dispose()
 {
-	// FIXME free children and data
-	members.dispose();
-	implement.dispose();
+	if (next != null) {
+		std.delayed_delete(next);
+	}
+	next := null;
+	delayed_dispose();
+	return;
+}
+
+virtual void delayed_dispose()
+{
+	if (next != null) {
+		std.delayed_delete(next);
+	}
+	std.delete(tok);
+	std.delete(members);
+	std.delete(implements);
+	std.delete(statement);
+	std.delete(stm_stack);
+	std.delete(lambda_stack);
+	std.delete(expression);
+	std.delete(garbage_pool);
 	std.free(this);
 	return;
 }
@@ -105,14 +172,19 @@ method void error(in string err)
 	return;
 }
 
-method buffer get_implement()
+method buffer get_implements()
 {
-	return implement;
+	return implements;
 }
 
-method void add_implement(in Atoken x)
+method int get_nb_lambda()
 {
-	implement.push(x);
+	return nb_lambda;
+}
+
+method void add_implements(in Atoken x)
+{
+	implements.push(x);
 	return;
 }
 
@@ -128,7 +200,7 @@ method int get_nb_fields()
 
 method void set_next(in Aclass n)
 {
-	next := n;
+	next := std.move(n);
 	return;
 }
 
@@ -167,7 +239,8 @@ method void prepare_type(in int type_)
 }
 
 method void prepare_type_identifier(in Atoken id_)
-{	prep_type := Aclass.$Cidentifier;
+{
+	prep_type := Aclass.$Cidentifier;
 	prep_type_id := id_;
 	return;
 }
@@ -189,6 +262,10 @@ method void valid_member_name()
 	} else {
 
 	}
+	prep_kind := 0;
+	prep_type := 0;
+	prep_type_id := null;
+	prep_name := null;
 	members.push(member);
 	return;
 }
@@ -232,22 +309,71 @@ method void begin_stm(in int type_, in Atoken orig)
 
 method void finish_stm()
 {
+	std.delete(statement);
 	statement := stm_stack.pop();
 	return;
 }
 
 
-method void finish_const(in Atoken initialiser_)
+method void finish_const(in Atoken initialiser1)
 {
 	valid_member_name();
-	member.set_initial_value(initialiser_);
+	member.set_initial_value(initialiser1);
 	return;
 }
+
+method void begin_lambda(in Atoken id1)
+{
+	var string nam;
+	var Atoken n;
+	var Aexpr ex;
+
+	nam := string.new(10);
+	nam.set_int(nb_lambda);
+	nb_lambda := nb_lambda + 1;
+	n := Atoken.new(Aclass.$Clambda, nam,
+			id1.get_line(), id1.get_file());
+	n.take();
+	garbage_pool.push(n);
+
+
+	ex := Aexpr.new(Aclass.$Clambda, 900, Aclass.$Clr);
+	ex.set_value(nam);
+	ex.set_origin(id1);
+	cur_expr.add(ex);
+
+	lambda_stack.push(stm_stack);
+	lambda_stack.push(member);
+	lambda_stack.push(cur_expr);
+	lambda_stack.push(statement);
+	lambda_stack.push(expression);
+	expression := null;
+	cur_expr := null;
+	statement := null;
+	stm_stack := buffer.new(2, 0);
+	member := Amember.new(Aclass.$Casync, Aclass.$Cvoid, null, n);
+	members.push(member);
+
+	return;
+}
+
+
+method void finish_lambda()
+{
+	std.delete(stm_stack);
+	expression := lambda_stack.pop();
+	statement := lambda_stack.pop();
+	cur_expr := lambda_stack.pop();
+	member := lambda_stack.pop();
+	stm_stack := lambda_stack.pop();
+	return;
+}
+
 
 method void finish_subroutine()
 {
 	while (stm_stack.length() > 0) {
-		stm_stack.pop();
+		std.maybe_delete(stm_stack.pop(), stm_stack);
 	}
 	return;
 }
@@ -263,11 +389,11 @@ method void begin_expr(in Atoken orig)
 method void finish_expr()
 {
 	if (expression != null) {
-/*
-		console.log("DUMP");
-		expression.dump(0);
-		console.log("DUMP END");
-*/
+		/*
+				console.log("DUMP");
+				expression.dump(0);
+				console.log("DUMP END");
+		*/
 		statement.set_expression(expression);
 	}
 	expression := null;
@@ -284,45 +410,45 @@ method void expr_op(in int op_, in Atoken orig)
 		ex := Aexpr.new(op_, 30, Aclass.$Crl);
 	} else if (op_ == Aclass.$Cequal) {
 		ex := Aexpr.new(op_, 100, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Cnotequal) {
+	} else if (op_ == Aclass.$Cnotequal) {
 		ex := Aexpr.new(op_, 100, Aclass.$Crl);
- 	} else if (op_ == Aclass.$Clargerequal) {
+	} else if (op_ == Aclass.$Clargerequal) {
 		ex := Aexpr.new(op_, 110, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Clesserequal) {
+	} else if (op_ == Aclass.$Clesserequal) {
 		ex := Aexpr.new(op_, 110, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Clarger) {
+	} else if (op_ == Aclass.$Clarger) {
 		ex := Aexpr.new(op_, 110, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Clesser) {
+	} else if (op_ == Aclass.$Clesser) {
 		ex := Aexpr.new(op_, 110, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Clogicaland) {
+	} else if (op_ == Aclass.$Clogicaland) {
 		ex := Aexpr.new(op_, 60, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Clogicalor) {
+	} else if (op_ == Aclass.$Clogicalor) {
 		ex := Aexpr.new(op_, 50, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Cadd) {
+	} else if (op_ == Aclass.$Cadd) {
 		ex := Aexpr.new(op_, 130, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Csub) {
+	} else if (op_ == Aclass.$Csub) {
 		ex := Aexpr.new(op_, 130, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Cmult) {
+	} else if (op_ == Aclass.$Cmult) {
 		ex := Aexpr.new(op_, 140, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Cdiv) {
+	} else if (op_ == Aclass.$Cdiv) {
 		ex := Aexpr.new(op_, 140, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Cmodulo) {
+	} else if (op_ == Aclass.$Cmodulo) {
 		ex := Aexpr.new(op_, 140, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Clogicalnot) {
+	} else if (op_ == Aclass.$Clogicalnot) {
 		ex := Aexpr.new(op_, 160, Aclass.$Crl);
- 	} else if (op_ == Aclass.$Cunaryplus) {
+	} else if (op_ == Aclass.$Cunaryplus) {
 		ex := Aexpr.new(op_, 160, Aclass.$Crl);
- 	} else if (op_ == Aclass.$Cunaryminus) {
+	} else if (op_ == Aclass.$Cunaryminus) {
 		ex := Aexpr.new(op_, 160, Aclass.$Crl);
- 	} else if (op_ == Aclass.$Cdot) {
+	} else if (op_ == Aclass.$Cdot) {
 		ex := Aexpr.new(op_, 170, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Cconstant) {
+	} else if (op_ == Aclass.$Cconstant) {
 		ex := Aexpr.new(op_, 170, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Ccall) {
+	} else if (op_ == Aclass.$Ccall) {
 		ex := Aexpr.new(op_, 170, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Cindex) {
+	} else if (op_ == Aclass.$Cindex) {
 		ex := Aexpr.new(op_, 170, Aclass.$Clr);
- 	} else if (op_ == Aclass.$Ccomma) {
+	} else if (op_ == Aclass.$Ccomma) {
 		ex := Aexpr.new(op_, 10, Aclass.$Clr);
 	} else {
 		console.log("Unknown operator.");
@@ -377,7 +503,8 @@ method void expr_open_index(in string id_, in Atoken orig)
 }
 
 method void expr_close_index()
-{	cur_expr := cur_expr.close(Aclass.$Cindex);
+{
+	cur_expr := cur_expr.close(Aclass.$Cindex);
 	if (cur_expr == null) {
 		error("What a mess in index..");
 	} else {
@@ -386,8 +513,8 @@ method void expr_close_index()
 	return;
 }
 
-method void expr_begin_sub_call(in string class_, in string name_, 
-	in Atoken orig)
+method void expr_begin_sub_call(in string class_, in string name_,
+				in Atoken orig)
 {
 	var Aexpr ex;
 	if (class_ != null) {
@@ -459,7 +586,7 @@ method void expr_char_const(in string value_, in Atoken orig)
 	var Aexpr ex;
 	ex := Aexpr.new(Aclass.$Cchar_const, 900, 0);
 	cur_expr := cur_expr.add(ex);
-	ex.set_value(value_); 
+	ex.set_value(value_);
 	ex.set_origin(orig);
 	return;
 }
@@ -469,13 +596,13 @@ method void expr_str_const(in string value_, in Atoken orig)
 	var Aexpr ex;
 	ex := Aexpr.new(Aclass.$Cstr_const, 900, 0);
 	cur_expr := cur_expr.add(ex);
-	ex.set_value(value_); 
+	ex.set_value(value_);
 	ex.set_origin(orig);
 	return;
 }
 
-method void expr_constant(in string class_name_, in string const_name_, 
-	in Atoken orig)
+method void expr_constant(in string class_name_, in string const_name_,
+			  in Atoken orig)
 {
 	var Aexpr ex;
 	expr_var(class_name_, orig);

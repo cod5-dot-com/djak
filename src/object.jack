@@ -25,19 +25,13 @@
  * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
  */
 
-class array
+class object
 {
 field int dummy;
 
-function array new(in int size, in object __parent)
+constructor object new()
 {
-	var array a;
-	if (size < 1) {
-		console.log("Size less than one");
-		std.panic();
-	}
-	a := std.alloc(size, __parent, array.$_DcidD);
-	return a;
+	return this;
 }
 
 virtual void dispose()

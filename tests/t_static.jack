@@ -1,0 +1,13 @@
+
+class main
+{
+
+function void main()
+{
+	console.log("Hello");
+	return;
+}
+
+
+} // class
+

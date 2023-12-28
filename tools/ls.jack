@@ -1,0 +1,83 @@
+/*
+ *             The authors disclaim copyright to this software.
+ */
+
+class ls
+{
+field file fin;
+field file fout;
+field string sin;
+field string sout;
+
+constructor ls new(in string sin1, in string sout1)
+{
+	fin := file.new("");
+	fout := file.new("");
+	sin := sin1;
+	sout := sout1;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.delete(fin);
+	std.delete(fout);
+	std.free(this);
+	return;
+}
+
+method void process_data(in int status, in int type, in string data)
+{
+	if (status != 200 || type != 0) {
+		if (type == 0) {
+			console.log(data);
+		} else {
+			console.log("Unknown error scan directory");
+		}
+		std.exit(-1);
+	}
+	
+	fout.write(sout, data, type, 0, data.length(), {
+		if (status != 200) {
+			console.log("Error writing file");
+			std.exit(-1);
+		}
+		return 0;
+	});
+	return 0;
+}
+
+method void run()
+{
+	fin.scandir(sin, {
+		return process_data(status, type, data);
+	});	
+	return;
+}
+
+} // class
+
+
+class main
+{
+
+function void main()
+{
+	var ls c;
+	var array args;
+	var int n;
+	args := std.get_args();
+	n := std.get_argc();
+
+	if (n < 2) {
+		c := ls.new(".", "/dev/stdout");
+	} else {
+		c := ls.new(args[1], "/dev/stdout");
+	}
+	c.run();
+	std.loop();
+	std.delete(c);
+	return;
+}
+
+} // class

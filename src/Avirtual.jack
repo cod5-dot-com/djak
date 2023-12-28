@@ -1,26 +1,62 @@
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
 
-class Avirtual {
+class Avirtual
+{
 field string _class;
 field Amember _memb;
 field Avirtual next;
 
-constructor Avirtual new(in Amember memb_, in string class_)
+constructor Avirtual new(in Amember memb1, in string class1)
 {
-	_class := class_;
-	_memb := memb_;
+	_class := std.move(class1.to_string());
+	_memb := std.move(memb1.copy());
 	next := null;
 	return this;
 }
 
 virtual void dispose()
 {
+	std.delayed_delete(this);
+	return;
+}
+
+virtual void delayed_dispose()
+{
+	std.delete(_class);
+	std.delete(_memb);
+	std.delete(next);
 	std.free(this);
 	return;
 }
 
 method void set_next(in Avirtual n)
 {
-	next := n;
+	next := std.move(n);
 	return;
 }
 
@@ -44,5 +80,5 @@ method Amember get_member_name()
 	return _memb.get_name_string();
 }
 
-
 } // class
+

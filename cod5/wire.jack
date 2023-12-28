@@ -1,0 +1,690 @@
+
+class wire {
+field buffer state;
+field buffer new_state;
+field buffer name;
+field int need_update;
+field int size;
+field int isreg;
+
+static int dfl_size;
+static int dfl_isreg;
+static buffer pool;
+
+constructor wire new(in int size_, in string name_, in int isreg_)
+{
+	var int l;
+	isreg := isreg_;
+	state := buffer.new(size);
+	new_state := buffer.new(size);
+	name := name_.to_string();
+	need_update := 1;
+	l := size_;
+	size := size_;
+	while (l > 0) {
+		l := l - 1;
+		state.set_at(l, 'U');
+		new_state.set_at(l, 'U');
+	}
+	return this;
+}
+
+virtual void dispose()
+{
+	new_state.dispose();
+	state.dispose();
+	name.dispose();
+	return;
+}
+
+/* named wire  */
+function wire d(in int size_, in string name_, in int isreg_)
+{
+	var int i;
+	var wire w;
+	var buffer p;
+	if (pool == 0) {
+		pool := buffer.new(1);
+	}
+	p := pool;
+	i := p.length();
+	while (i > 0) {
+		i := i - 1;
+		w := p.get_at(i);
+		if (w.isname(name_) != 0) {
+			return w;
+		}	
+	}
+	w := wire.new(size_, name_, isreg_);
+	pool.push(w);
+	return w;
+}
+
+
+/* named wire with default settings */
+function wire f(in string name_)
+{
+	var int i;
+	var wire w;
+	var buffer p;
+	if (pool == 0) {
+		pool := buffer.new(1);
+	}
+	p := pool;
+	i := p.length();
+	while (i > 0) {
+		i := i - 1;
+		w := p.get_at(i);
+		if (w.isname(name_) != 0) {
+			return w;
+		}	
+	}
+	w := wire.new(dfl_size, name_, dfl_isreg);
+	pool.push(w);
+	return w;
+}
+
+/* constant value */
+function wire c(in string value_)
+{
+	var wire w;
+	var int i;
+	var int j;
+	var int d;
+	var int v;
+
+	w := wire.f(value_);
+
+	i := value_.length();
+	d := w.width();
+	j := 0;
+	while (i > 0) {
+		i := i - 1;
+		if (j < d) {
+			v := value_.get_at(i);
+			if (v != ' ') {
+				w.set(j, value_.get_at(i));
+				j := j + 1;
+			}
+		}	
+	}
+	while (j < d) {
+		w.set(j, '0');
+		j := j + 1;
+	}
+	return w;
+}
+
+function void set_defaults(in int size_, in string name_, in int isreg_)
+{
+	dfl_size := size_;
+	dfl_isreg := isreg_;
+	return;
+}
+
+method int isname(in string na)
+{
+	return na.compare(name) == 0;
+}
+
+method int get(in int idx)
+{
+	return state.get_at(idx);
+}
+
+method int width()
+{
+	return state.length();
+}
+
+method void print()
+{
+	var int l;
+	console.log_str(name);
+	l := state.length();
+	console.log_str(":\t");
+	while (l > 0) {
+		l := l - 1;
+		if (state.get_at(l) == '+') {
+			console.log_str("+");
+		} else if (state.get_at(l) == '-') {
+			console.log_str("-");
+		} else {
+			console.log_str("0");
+		}
+	}
+	console.log("");
+	return;
+}
+
+virtual void set(in int idx, in int v)
+{
+	var int o;
+
+	o := state.get_at(idx);
+	if (o != v) {
+		need_update := 1;
+	}
+	if (isreg != 0) {
+		new_state.set_at(idx, v);
+	} else {
+		state.set_at(idx, v);
+	}
+	return;
+}
+
+method void always()
+{
+	//chip.or(out1, in1, in2);
+	return;
+}
+
+method void copy_buffer(in buffer data)
+{
+	var int l;
+	l := size;
+	while (l > 0) {
+		l := l - 1;
+		state.set_at(l, data.get_at(l));
+	}
+	return;
+}
+
+method void set_all(in wire input)
+{
+	var int l;
+	l := size;
+	if (input.width() < l) {
+		l := input.width();
+	}
+	while (l > 0) {
+		l := l - 1;
+		set(l, input.get(l));
+	}
+	return;
+}
+
+virtual void clock()
+{
+	if (need_update == 0) {
+		return;
+	}
+	if (isreg != 0) {
+		copy_buffer(new_state);
+	}
+	need_update := 0;
+	always();
+	return;
+}
+
+function void bufif13(out wire c, in wire a, in wire enable)
+{
+	var int w;
+	if (enable.get(0) == '0') {
+		return;
+	}
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		c.set(w, a.get(w));
+	}
+	return;
+}
+
+function void bufif03(out wire c, in wire a, in wire enable)
+{
+	var int w;
+	if (enable.get(0) != '0') {
+		return;
+	}
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		c.set(w, a.get(w));
+	}
+	return;
+}
+
+
+function void cons3(out wire c, in wire a, in wire b)
+{
+	var int w;
+	var int va;
+	var int vb;
+	var int vc;
+
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		va := a.get(w);
+		vb := b.get(w);
+		vc := '0';
+		if (va == '-') {
+			if (vb == '-') {
+				vc := '-';
+			}
+		} else if (va == '+') {
+			if (vb == '+') {
+				vc := '+';
+			}
+		}
+		c.set(w, vc);	
+	}	
+	return;
+}
+
+
+function void any3(out wire c, in wire a, in wire b)
+{
+	var int w;
+	var int va;
+	var int vb;
+	var int vc;
+
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		va := a.get(w);
+		vb := b.get(w);
+		vc := va;
+		if (va == '-') {
+			if (vb == '+') {
+				vc := '0';
+			}
+		} else if (va == '0') {
+			if (vb == '0') {
+				vc := '0';
+			}
+		} else if (va == '+') {
+			if (vb == '-') {
+				vc := '0';
+			}
+		}
+		c.set(w, vc);	
+	}	
+	return;
+}
+
+
+function void xor3(out wire c, in wire a, in wire b)
+{
+	var int w;
+	var int va;
+	var int vb;
+	var int vc;
+
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		va := a.get(w);
+		vb := b.get(w);
+		vc := '0';
+		if (va == '-') {
+			if (vb == '-') {
+				vc := '-';
+			} else if(vb == '+') {
+				vc := '+';
+			}
+		} else if (va == '+') {
+			if (vb == '-') {
+				vc := '+';
+			} else if(vb == '+') {
+				vc := '-';
+			}
+		}
+		c.set(w, vc);	
+	}	
+	return;
+}
+
+function void inc3(out wire c, in wire a)
+{
+
+	wire.add3(c, a, wire.c("+"));
+	return;
+}
+
+/*
+ * https://homepage.cs.uiowa.edu/~dwjones/ternary/arith.shtml
+ */
+function void add3(out wire c, in wire a, in wire b)
+{
+	var int w;
+	var int va;
+	var int vb;
+	var int vc;
+	var int ca;
+	var int c0;
+	var int i;
+
+	w := c.width();
+	i := 0;
+	c0 := '0';
+	while (i < w) {
+		va := a.get(i);
+		vb := b.get(i);
+		vc := '0';
+		// output
+		if (va == '-') {
+			if (vb == '-') {
+				if (c0 == '0') {
+					vc := '+';
+				} else if (c0 == '+') {
+					vc := '-';	
+				}
+			} else if (vb == '0') {
+				if (c0 == '-') {
+					vc := '+';
+				} else if (c0 == '0') {
+					vc := '-';
+				}
+			} else if (vb == '+') {
+				if (c0 == '-') {
+					vc := '-';
+				} else if (c0 == '+') {
+					vc := '+';
+				}
+			}
+		} else if (va == '0') {
+			if (vb == '-') {
+				if (c0 == '-') {
+					vc := '+';
+				} else if (c0 == '0') {
+					vc := '-';
+				}
+			} else if (vb == '0') {
+				if (c0 == '-') {
+					vc := '-';
+				} else if (c0 == '+') {
+					vc := '+';
+				}
+			} else if (vb == '+') {	
+				if (c0 == '0') {
+					vc := '+';
+				} else if (c0 == '+') {
+					vc := '-';
+				}
+			}
+		} else { // va == '+'
+			if (vb == '-') {
+				if (c0 == '-') {
+					vc := '-';
+				} else if (c0 == '+') {
+					vc := '+';
+				}
+			} else if (vb == '0') {
+				if (c0 == '0') {
+					vc := '+';
+				} else if (c0 == '+') {
+					vc := '-';
+				}
+			
+			} else if (vb == '+') {
+				if (c0 == '-') {
+					vc := '+';
+				} else if (c0 == '0') {
+					vc := '-';
+				}
+			}
+		}
+		ca := '0';
+		// carry
+		if (va == '-') {
+			if (vb == '-') {
+				if (c0 == '-') {
+					ca := '-';
+				} else if (c0 == '0') {
+					ca := '-';
+				}
+			} else if (vb == '0') {
+				if (c0 == '-') {
+					ca := '-';
+				}
+			}
+		} else if (va == '0') {
+			if (vb == '-') {
+				if (c0 == '-') {
+					ca := '-';
+				}
+			} else if (vb == '+') {
+				if (c0 == '+') {
+					ca := '+';
+				}
+			}
+		} else if (va == '+') {
+			if (vb == '0') {
+				if (c0 == '+') {
+					ca := '+';
+				}
+			} else if (vb == '+') {
+				if (c0 == '0') {
+					ca := '+';
+				} else if (c0 == '+') {
+					ca := '+';
+				}
+			}
+		}
+		c0 := ca;
+		c.set(i, vc);	
+		i := i + 1;
+	}	
+	return;
+}
+
+/* c = '-' if a < b, c = '+' if a > b,  c = 0 if a = b */
+function void compare3(out wire c, in wire a, in wire b)
+{
+	var int w;
+	var int va;
+	var int vb;
+
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		va := a.get(w);
+		vb := b.get(w);
+		if (va == '-') {
+			if (vb == '0' || vb == '+') {
+				c.set(0, '-');
+				return;
+			}
+		} else if (va == '0') {
+			if (vb == '-') {
+				c.set(0, '+');
+				return;
+			} else if (vb == '+') {
+				c.set(0, '-');
+				return;
+			}
+		} else if (va == '+') {
+			if (vb == '-' || vb == '0') {
+				c.set(0, '+');
+				return;
+			}
+		}
+	}
+	c.set(0, '0');	
+	return;
+}
+
+function void sub3(out wire c, in wire a, in wire b)
+{
+	var int w;
+	var int vb;
+	var int vc;
+
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		vb := b.get(w);
+		if (vb == '-') {
+			vc := '+';
+		} else if (vb == '0') {
+			vc := '0';
+		} else if (vb == '+') {
+			vc := '-';
+		}
+		c.set(w, vc);	
+	}
+	wire.add3(c, a, c);	
+	return;
+}
+
+
+function void buf3(out wire c, in wire a)
+{
+	var int w;
+
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		c.set(w, a.get(w));
+	}
+	return;
+}
+
+function void not3(out wire c, in wire a)
+{
+	var int w;
+	var int va;
+
+	w := c.width();
+	while (w > 0) {
+		w := w - 1;
+		va := a.get(w);
+		if (va == '-') {
+			c.set(w, '+');
+		} else if (va == '+') {
+			c.set(w, '-');
+		} else {
+			c.set(w, va);
+		}
+	}
+	return;
+}
+
+
+/* shift */
+function void shift3(out wire res, in wire dt, in wire amount)
+{
+	var int dtl;
+	var int rl;
+	var int i;
+	var int a;
+	var int q;
+	var int t;
+	var int n;
+	dtl := dt.width();
+	rl := res.width();
+	a := amount.width();
+	q := 0;
+	t := 1;
+	i := 0;
+	while (i < a) {
+		n := amount.get(i);
+		if (n == '-') {
+			q := q - t;
+		} else if (n == '+') {
+			q := q + t;
+		}
+		t := t * 3;
+		i := i + 1;
+	}
+	while (rl > 0) {
+		rl := rl - 1;
+		i := rl - q;
+		if (i >= 0 && i < dtl) {
+			res.set(rl, dt.get(i));
+		} else {
+			res.set(rl, '0');
+		}			
+	}		
+	return 0;
+}
+
+/* multiplexer */
+function void mux33(out wire res, in wire select, in wire n, in wire z, in wire p)
+{
+	var int t;
+	t := select.get(0);
+	if (t == '+') {
+		res.set_all(p);	
+	} else if (t == '-') {
+		res.set_all(n);	
+	} else {
+		res.set_all(z);	
+	}
+	return;
+}
+
+function void mux93(out wire res, in wire select, 
+	in wire nn, in wire nz, in wire np,
+	in wire zn, in wire zz, in wire zp,
+	in wire pn, in wire pz, in wire pp)
+{
+	var int t1;
+	var int t;
+	t1 := select.get(1);
+	t := select.get(0);
+	if (t1 == '+') {
+		if (t == '+') {
+			res.set_all(pp);	
+		} else if (t == '-') {
+			res.set_all(pn);	
+		} else {
+			res.set_all(pz);	
+		}
+	} else if (t1 == '-') {
+		if (t == '+') {
+			res.set_all(np);	
+		} else if (t == '-') {
+			res.set_all(nn);	
+		} else {
+			res.set_all(nz);	
+		}
+	} else {
+		if (t == '+') {
+			res.set_all(zp);	
+		} else if (t == '-') {
+			res.set_all(zn);	
+		} else {
+			res.set_all(zz);	
+		}
+	}
+	return;
+}
+
+function int eq(in wire a, in string b)
+{
+	var wire c1;
+	c1 := wire.d(1, "wire.eq.c", 0);
+	wire.compare3(c1, a, wire.c(b));
+	if (c1.get(0) == '0') {
+		return 1;
+	}
+	return 0;	
+}
+
+/* '+' positive, '-' negative number */
+function void sign3(out wire res, in wire dt)
+{
+	var int l;
+	var int t;
+	l := dt.width();	
+	while (l > 0) {
+		l := l - 1;
+		t := dt.get(l);
+		if (t == '+') {
+			res.set(0, '+');
+			return;
+		} else if (t == '-') {
+			res.set(0, '-');
+			return;
+		}
+	}
+	res.set(0, '0');
+	return;
+}
+
+}
+

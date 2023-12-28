@@ -1,4 +1,32 @@
-class Aparser implements object {
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
+
+class Aparser
+{
 field buffer _states;
 field Alexer lex;
 field Atoken lookahead;
@@ -30,22 +58,17 @@ const int Csubroutine_dec := 20;
 const int Cclass_dec1 := 21;
 const int Cif_statem1 := 22;
 const int Cif_statem2 := 23;
-//const int Cbool_expr := 24;
-//const int Cbool_expr1 := 25;
-//const int Cbool_term := 26;
-//const int Cbool_term1 := 27;
-//const int Ccomp_op := 28;
-const int Celse_statem := 29;
-const int Celse_statem1 := 30;
-const int Celse_statem2 := 31;
-
+const int Celse_statem := 24;
+const int Celse_statem1 := 25;
+const int Celse_statem2 := 26;
+const int Clambda_body1 := 27;
 
 constructor Aparser new()
 {
 	debug := 0;
 	status := 0;
 	lex := null;
-	_states := buffer.new(8);
+	_states := buffer.new(8, 0);
 	_class := null;
 	push(Aparser.$Croot);
 	return this;
@@ -53,7 +76,8 @@ constructor Aparser new()
 
 virtual void dispose()
 {
-	_states.dispose();
+	std.delete(_states);
+	std.delete(_class);
 	std.free(this);
 	return;
 }
@@ -70,14 +94,7 @@ method Aclass get_next()
 
 method void release()
 {
-	var Aclass c;
-	c := _class;
-	
-	while (c != null) {
-		_class := c.get_next();
-		c.dispose();
-		c := _class;
-	}
+	std.delete(_class);
 	_class := null;
 	return;
 }
@@ -88,9 +105,9 @@ method int parse(in Alexer lexer_)
 	while (lex.empty() == 0) {
 		lookahead := lex.get_at(0);
 		lookstring := lookahead.get_data();
-		if ((lookahead.get_type() == Alexer.$Cnewline) 
-		 		|| (lookahead.get_type() == Alexer.$Ccomment))
-		{
+		if ((lookahead.get_type() == Alexer.$Cnewline)
+		    || (lookahead.get_type() == Alexer.$Ccomment)
+		   ) {
 			eat();
 		} else {
 			state_machine();
@@ -108,7 +125,7 @@ method int parse(in Alexer lexer_)
 
 method void error(in string e)
 {
-	
+
 	console.log_str(lookahead.get_file());
 	console.log_str(": found '");
 	console.log_str(lookahead.get_data());
@@ -162,13 +179,13 @@ method void class_dec()
 	_class.set_next(c);
 	eat();
 
-	if (match_id("implements") != 0) {
+	if (match_id("implements")) {
 		eat();
 		if (match_id(null) == 0) {
 			error("expecting class identifier");
 			return;
 		}
-		_class.add_implement(lookahead);
+		_class.add_implements(lookahead);
 		eat();
 		while (match_op(",") != 0) {
 			eat();
@@ -176,7 +193,7 @@ method void class_dec()
 				error("expecting class identifier");
 				return;
 			}
-			_class.add_implement(lookahead);
+			_class.add_implements(lookahead);
 			eat();
 		}
 	}
@@ -225,7 +242,7 @@ method void class_var_dec()
 
 	type();
 
-	var_name();	
+	var_name();
 
 	while (match_op(",") != 0) {
 		_class.valid_member_name();
@@ -251,12 +268,10 @@ method void var_name()
 	return;
 }
 
-method void type() 
+method void type()
 {
 	if (match_id("int") != 0) {
 		_class.prepare_type(Aclass.$Cint);
-//	} else if (match_id("bytes") != 0) {
-//		_class.prepare_type(Aclass.$Cbytes);
 	} else if (match_id("void") != 0) {
 		_class.prepare_type(Aclass.$Cvoid);
 	} else if (match_id(null) != 0) {
@@ -278,17 +293,13 @@ method void clas_const_dec()
 		return;
 	}
 	eat();
-
 	type();
-
-	var_name();	
-
+	var_name();
 	if (match_op(":=") == 0) {
 		error("':=' expected.");
 		return;
 	}
 	eat();
-
 	if (match_op(";") == 0) {
 		_class.finish_const(lookahead);
 	} else {
@@ -330,28 +341,20 @@ method void subroutine_dec()
 	} else {
 		type();
 	}
-
-	var_name(); // subrout_name	
-
+	var_name(); // subrout_name
 	_class.valid_member_name();
-
 	if (match_op("(") == 0) {
 		error("'(' expected.");
 		return;
 	}
 	eat();
-
 	param_list();
-
 	if (match_op(")") == 0) {
 		error("')' expected.");
 		return;
 	}
 	eat();
-
 	subrout_body();
-
-
 	return;
 }
 
@@ -360,20 +363,16 @@ method void param_list()
 	if (match_op(")") != 0) {
 		return;
 	}
-	
 	direction();
-	
 	type();
-
-	var_name(); 
-	
+	var_name();
 	while (match_op(",") != 0) {
 		_class.valid_param();
 		eat();
 		direction();
 		type();
 		var_name();
-	}	
+	}
 	_class.valid_param();
 	return;
 }
@@ -392,17 +391,22 @@ method void direction()
 		_class.prepare_kind(Aclass.$Cio);
 		eat();
 		return;
+	} else if (match_id("async") != 0) {
+		_class.prepare_kind(Aclass.$Casync);
+		eat();
+		return;
 	}
-	error("Expected 'in/out/io'.");
+	error("Expected 'in/out/io/async'.");
 	return;
 }
-	
-method void subrout_body()
+
+method void lambda_body()
 {
 	if (match_op("{") == 0) {
 		error("'{' expected.");
 		return;
 	}
+	_class.begin_lambda(lookahead);
 	eat();
 
 	while (status == 0) {
@@ -410,6 +414,35 @@ method void subrout_body()
 	}
 	status := 0;
 
+	push(Aparser.$Clambda_body1);
+	push(Aparser.$Cstatements);
+	return;
+}
+
+method void lambda_body1()
+{
+	pop();
+	if (match_op("}") == 0) {
+		error("'}' expected at end of lambda body.");
+		return;
+	}
+	eat();
+	_class.finish_lambda();
+	return;
+}
+
+
+method void subrout_body()
+{
+	if (match_op("{") == 0) {
+		error("'{' expected.");
+		return;
+	}
+	eat();
+	while (status == 0) {
+		var_dec();
+	}
+	status := 0;
 	push(Aparser.$Csubrout_body1);
 	push(Aparser.$Cstatements);
 	return;
@@ -436,13 +469,12 @@ method void var_dec()
 	eat();
 	_class.prepare_kind(Aclass.$Cvar);
 	type();
-	var_name(); 
-	
+	var_name();
 	while (match_op(",") != 0) {
 		_class.valid_var();
 		eat();
 		var_name();
-	}	
+	}
 	_class.valid_var();
 	if (match_op(";") == 0) {
 		error("';' expected at end of variable declaration");
@@ -482,10 +514,18 @@ method void statement()
 		eat();
 		return;
 	}
-	if (r == 0) { r := if_statem(Aclass.$Cif); }
-	if (r == 0) { r := while_statem(); }
-	if (r == 0) { r := return_statem(); }
-	if (r == 0) { r := dolet_statem(); }
+	if (r == 0) {
+		r := if_statem(Aclass.$Cif);
+	}
+	if (r == 0) {
+		r := while_statem();
+	}
+	if (r == 0) {
+		r := return_statem();
+	}
+	if (r == 0) {
+		r := dolet_statem();
+	}
 	if (r == 0) {
 		// end of subroutine or end of statement body
 		status := 1;
@@ -498,6 +538,9 @@ method int if_statem(in int type_)
 	if (match_id("if") == 0) {
 		return 0;
 	}
+	if (type_ == Aclass.$Cif) {
+		_class.begin_stm(Aclass.$Cifblock, lookahead);
+	}
 	_class.begin_stm(type_, lookahead);
 	eat();
 	if (match_op("(") == 0) {
@@ -508,7 +551,6 @@ method int if_statem(in int type_)
 	push(Aparser.$Cif_statem1);
 	push(Aparser.$Cexpression);
 	_class.begin_expr(lookahead);
-
 	return 1;
 }
 
@@ -541,18 +583,16 @@ method void else_statem()
 	eat();
 	if (match_id("else") == 0) {
 		_class.finish_stm();
+		_class.finish_stm();
 		return;
 	}
 	eat();
-	
 	if (match_id("if") != 0) {
 		_class.finish_stm();
 		if_statem(Aclass.$Celseif);
 		return;
 	}
-
 	_class.begin_else(Aclass.$Celse);
-
 	if (match_op("{") == 0) {
 		error("'{' expected after else.");
 		return;
@@ -570,6 +610,7 @@ method void else_statem1()
 		error("'}' expected after else body.");
 		return;
 	}
+	_class.finish_stm();
 	_class.finish_stm();
 	eat();
 	return;
@@ -663,7 +704,7 @@ method int dolet_statem()
 		return 0;
 	}
 	id := lookahead;
-	eat();	
+	eat();
 	if ((match_op(":=") != 0) || (match_op("[") != 0)) {
 		_class.begin_stm(Aclass.$Clet, lookahead);
 		return let_statem(id);
@@ -676,7 +717,7 @@ method int dolet_statem()
 
 method int let_statem(in Atoken id)
 {
-	
+
 	if (match_op(":=") != 0) {
 		_class.expr_var(id.get_data(), lookahead);
 		_class.expr_op(Aclass.$Cassign, lookahead);
@@ -814,7 +855,7 @@ method void term()
 		_class.expr_term(Aclass.$Cnull, lookahead);
 		eat();
 	} else if (lookahead.get_type() == Alexer.$Cidentifier) {
-		id := lookahead;
+		id:= lookahead;
 		eat();
 		if (match_op("[") != 0) {
 			_class.expr_open_index(id.get_data(), lookahead);
@@ -830,8 +871,8 @@ method void term()
 				error("constant name expected.");
 				return;
 			}
-			_class.expr_constant(id.get_data(), 
-				lookahead.get_data(), lookahead);
+			_class.expr_constant(id.get_data(),
+					     lookahead.get_data(), lookahead);
 			eat();
 		} else {
 			// var_name
@@ -865,6 +906,9 @@ method void term()
 		eat();
 		push(Aparser.$Cterm1);
 		push(Aparser.$Cexpression);
+	} else if (match_op("{") != 0) {
+		// "{" statements "}"
+		lambda_body();
 	} else {
 		error("unexpected term");
 		return;
@@ -891,7 +935,7 @@ method int subrout_call(in Atoken id)
 	}
 	return 0;
 }
-	
+
 method void term1()
 {
 	// "(" expression ")"
@@ -927,10 +971,10 @@ method void sub_call(in Atoken class_, in Atoken id)
 	}
 	eat();
 	if (class_ != null) {
-		_class.expr_begin_sub_call(class_.get_data(), id.get_data(), 
-			lookahead);	
+		_class.expr_begin_sub_call(class_.get_data(), id.get_data(),
+					   lookahead);
 	} else {
-		_class.expr_begin_sub_call(null, id.get_data(), lookahead);	
+		_class.expr_begin_sub_call(null, id.get_data(), lookahead);
 	}
 	push(Aparser.$Csub_call1);
 	if (match_op(")") == 0) {
@@ -938,7 +982,7 @@ method void sub_call(in Atoken class_, in Atoken id)
 		push(Aparser.$Cexpression);
 		return;
 	}
-	_class.expr_finish_sub_call();	
+	_class.expr_finish_sub_call();
 	return;
 }
 
@@ -999,9 +1043,9 @@ method void eat()
 		lookstring := null;
 		return;
 	}
-	while ((lookahead.get_type() == Alexer.$Cnewline) 
-		 	|| (lookahead.get_type() == Alexer.$Ccomment))
-	{
+	while ((lookahead.get_type() == Alexer.$Cnewline)
+	       || (lookahead.get_type() == Alexer.$Ccomment)
+	      ) {
 		lex.shift();
 		if (lex.empty() != 0) {
 			lookstring := null;
@@ -1050,7 +1094,7 @@ method int match_newline()
 method int match_str(in string id)
 {
 	var int t;
-	
+
 	t := lookahead.get_type();
 	if ((t != Alexer.$Cstring) && (t != Alexer.$Cquote)) {
 		return 0;
@@ -1067,7 +1111,7 @@ method int state_machine()
 
 	state := _states.get_last();
 
-	if (debug > 0) {	
+	if (debug > 0) {
 		console.log(lookstring);
 		console.log_int(state);
 	}
@@ -1107,6 +1151,8 @@ method int state_machine()
 		while_statem1();
 	} else if (state == Aparser.$Cwhile_statem2) {
 		while_statem2();
+	} else if (state == Aparser.$Clambda_body1) {
+		lambda_body1();
 	} else if (state == Aparser.$Csubrout_body1) {
 		subrout_body1();
 	} else if (state == Aparser.$Csubroutine_dec) {
@@ -1122,11 +1168,10 @@ method int state_machine()
 	} else {
 		error("unexpected state");
 		lex.shift();
-		status := -1; 
+		status := -1;
 	}
 	return 1;
 }
-
 
 } // class
 

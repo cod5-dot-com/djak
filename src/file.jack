@@ -1,75 +1,97 @@
-class file {
-field string _folder;
-field response fs_cb;
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
 
-constructor file new(in string folder, in response fscb)
+class file
+{
+field string _folder;
+
+constructor file new(in string folder)
 {
 	_folder := folder.to_string();
-	fs_cb := fscb;
 	return this;
 }
 
 virtual void dispose()
 {
-	fs_cb.clear();
 	_folder.dispose();
 	std.free(this);
 	return;
 }
 
-method void mkfolder()
+method void mkfolder(async object cb)
 {
-	fs_cb.clear();
-	std.mkfolder(fs_cb);
+	/* this_cb is automatically generated for async */
+	std.mkfolder(cb, this_cb);
 	return;
 }
 
-method void mkdir(in string name)
+method void mkdir(in string name, async object cb)
 {
-	fs_cb.clear();
-	std.mkdir(_folder, name, fs_cb);
+	std.mkdir(_folder, name, cb, this_cb);
 	return;
 }
 
-method void read(in string name, in int seek, in int size_)
+method void read(in string name, in int seek, in int size_, async object cb)
 {
-	fs_cb.clear();
-	std.read(_folder, name, seek, size_, fs_cb);
+	std.read(_folder, name, seek, size_, cb, this_cb);
 	return;
 }
 
-method void write(in string name, in bytes data, in int seek, in int size)
+/**
+ * type 1: bytes  0: string
+ */
+method void write(in string name, in object data, in int type, in int seek,
+		  in int size, async object cb)
 {
-	fs_cb.clear();
-	std.write(_folder, name, data, seek, size, fs_cb);
+	std.write(_folder, name, data, type, seek, size, cb, this_cb);
 	return;
 }
 
-method void filesize(in string name)
+method void filesize(in string name, async object cb)
 {
-	fs_cb.clear();
-	std.filesize(_folder, name, fs_cb);
+	std.filesize(_folder, name, cb, this_cb);
 	return;
 }
 
-method void scandir(in string name)
+method void scandir(in string name, async object cb)
 {
-	fs_cb.clear();
-	std.scandir(_folder, name, fs_cb);
+	std.scandir(_folder, name, cb, this_cb);
 	return;
 }
 
-method void rmdir(in string name)
+method void rmdir(in string name, async object cb)
 {
-	fs_cb.clear();
-	std.rmdir(_folder, name, fs_cb);
+	std.rmdir(_folder, name, cb, this_cb);
 	return;
 }
 
-method void unlink(in string name) 
+method void unlink(in string name, async object cb)
 {
-	fs_cb.clear();
-	std.unlink(_folder, name, fs_cb);
+	std.unlink(_folder, name, cb, this_cb);
 	return;
 }
 

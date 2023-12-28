@@ -1,0 +1,41 @@
+
+class t_async {
+
+constructor t_async new()
+{
+	return this;
+}
+
+virtual void dispose()
+{
+	std.free(this);
+	return;
+}
+
+method void go(async std cb)
+{
+	worker.new(cb.this(), cb, 200, ": yes, async called", 0);
+	return;
+}
+
+method void letsgo()
+{
+	go({console.log_int(status); console.log(data);return;});
+	return;
+}
+
+function void test()
+{
+	var t_async t;
+	main.start("t_async");
+		
+	t := t_async.new();
+	t.letsgo();
+	std.loop();
+	std.delete(t);
+	main.pass("OK");
+	return;
+}
+
+}
+

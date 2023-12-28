@@ -1,0 +1,496 @@
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
+
+class Acbody
+{
+field string class_name;
+field buffer _expr_stk;
+field int debug;
+field buffer string_pool;
+field Aemmiter side;
+field Aemmitc emmiter;
+field buffer stack;
+field buffer body;
+field buffer buf;
+field Aexpr ex;
+field Astatement stm;
+field int ty;
+field int padde;
+field int l;
+field int i;
+field string end;
+field string switchend;
+field string caseend;
+field Amember cmb;
+
+
+constructor Acbody new(in Aemmitc emmiter1, in Aemmiter side1,
+		       in string class_name1, in int debug1,
+		       in buffer expr_stk1)
+{
+	emmiter := emmiter1;
+	side := side1;
+	class_name := class_name1;
+	debug := debug1;
+	_expr_stk := expr_stk1;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.free(this);
+	return;
+}
+
+method void add_to_data(in string s)
+{
+	emmiter.add_to_data(s);
+	return;
+}
+
+method void expr_gen(in Aexpr expr)
+{
+	side.expr_gen(expr);
+	return;
+}
+
+method void expr_gen_var(in Aexpr expr)
+{
+	emmiter.expr_gen_var(expr);
+	return;
+}
+
+method void expr_gen_case(in Aexpr expr, in int padde)
+{
+	emmiter.expr_gen_case(expr, padde);
+	return;
+}
+
+method void body_gen(in Amember mb, in int k, in buffer vars_, in buffer body1)
+{
+	var int l, i;
+	var Atoken tok;
+	var Amember va;
+
+	body := body1;
+	emmiter.set_member(mb);
+	side.set_member(mb);
+
+	emmiter.fix_datal();
+	add_to_data("{\n");
+	if (debug > 0) {
+		add_to_data("\tstatic var recursive = 0;\n");
+		add_to_data("\tvar __return__ = 0;\n");
+	}
+	if (vars_ != null) {
+		l := vars_.length();
+	} else {
+		l := 0;
+	}
+	i := 0;
+	while (i < l) {
+		va := vars_.get_at(i);
+		add_to_data("\tvar ");
+		tok := va.get_name();
+		add_to_data(tok.get_data());
+		add_to_data(";\n");
+		i := i + 1;
+	}
+
+	if ((k == Aclass.$Cvirtual) || (k == Aclass.$Cmethod)
+	    || (k == Aclass.$Cconstructor) || (k == Aclass.$Casync)
+	   ) {
+		add_to_data("\tMAKETHIS(");
+		add_to_data(class_name);
+		add_to_data(");\n");
+	} else {
+		add_to_data("\tFAKETHIS();\n");
+	}
+
+	if (debug > 0) {
+		gen_debug_rec(mb, k);
+	}
+	gen_statements();
+	return;
+}
+
+method void gen_debug_rec(in Amember mb, in int k)
+{
+	var string mbs;
+	if (debug > 0) {
+		mbs := mb.get_name_string();
+		if (k == Aclass.$Cmethod) {
+			add_to_data("\tif (((var*)__this)[-1]!=");
+			add_to_data(class_name);
+			add_to_data("___DcidD");
+			if (class_name.compare("string") == 0) {
+				if (mbs.compare("get_buf") == 0 ||
+				    mbs.compare("to_string") == 0 ||
+				    mbs.compare("length") == 0) {
+					add_to_data(
+						"&& ((var*)__this)[-1]!=-2");
+					add_to_data(
+						"&& ((var*)__this)[-1]!=0");
+				}
+			}
+			add_to_data(
+				"){\n\t\tprintf(\"CID: %ld \", ((var*)__this)[-1]);\n");
+			add_to_data("\t\tstd__panic();\n\t}\n");
+		}
+		add_to_data("\trecursive++;\n");
+
+		if (debug > 1) {
+			add_to_data("\tif (recursive != 1) {\n");
+			add_to_data(
+				"\t\tfprintf(stderr, \"recursive call in \\\"");
+			add_to_data(class_name);
+			add_to_data(".");
+			add_to_data(mb.get_name_string());
+			add_to_data("\\\"\\n\");std__panic();\n\t}");
+		}
+	}
+	return;
+}
+
+method void transform_ifblock()
+{
+	var buffer children;
+	var string iv;
+	var int j;
+	children := stm.get_statements();
+	stm := children.get_at(0);
+	iv := side.is_switch(stm, null);
+	if (iv == null) {
+		cmb := null;
+	} else {
+		cmb := side.find_variable(iv);
+	}
+	if (cmb == null) {
+		iv := null;
+	} else {
+		if (cmb.get_type() != Aclass.$Cint) {
+			iv := null;
+		}
+	}
+	ty := Aclass.$Celseif;
+	j := 0;
+	while (j < children.length() && iv != null
+	       && ty == Aclass.$Celseif
+	      ) {
+		stm := children.get_at(j);
+		if (side.is_switch(stm, iv) == null) {
+			iv := null;
+			break;
+		}
+		j := j + 1;
+	}
+	if (j > 2) {
+		j := j - 1;
+		stm := children.get_at(j);
+		buf := stm.get_else();
+		if (buf != null) {
+			stm := buf.get_at(0);
+			stm.set_type(Aclass.$Cdefault);
+		}
+		while (j > 0) {
+			stm := children.get_at(j);
+			stm.set_type(Aclass.$Ccase);
+			j := j - 1;
+		}
+		stm := children.get_at(j);
+		stm.set_type(Aclass.$Cswitch);
+
+		stm := body.get_at(i);
+		ty := Aclass.$Cswitchblock;
+		stm.set_type(ty);
+	} else {
+		stm := body.get_at(i);
+		ty := stm.get_type();
+	}
+	return;
+}
+
+method void prepare_ifblock()
+{
+	stack.push(l);
+	stack.push(i + 1);
+	stack.push(body);
+	stack.push(end);
+	if (ty == Aclass.$Cifblock) {
+		end := null;
+	} else {
+		end := switchend;
+	}
+	i := -1;
+	l := 0;
+	body := stm.get_statements();
+	if (body != null) {
+		l := body.length();
+	}
+	return;
+}
+
+method void gen_if()
+{
+	if (ty == Aclass.$Celseif) {
+		add_to_data(" else if (");
+	} else {
+		add_to_data("if (");
+	}
+	ex := stm.get_expression();
+	if (ex != null) {
+		expr_gen(ex);
+	}
+	add_to_data(") {");
+	stack.push(l);
+	stack.push(i + 1);
+	stack.push(body);
+	stack.push(end);
+	end := "}";
+
+	buf := stm.get_else();
+	if (buf != null) {
+		stack.push(buf.length());
+		stack.push(0);
+		stack.push(buf);
+		stack.push(end);
+		end := "}";
+	}
+
+	padde := padde + 1;
+	i := -1;
+	l := 0;
+	body := stm.get_statements();
+	if (body != null) {
+		l := body.length();
+	}
+	return;
+}
+
+method void gen_return()
+{
+	ex := stm.get_expression();
+	if (ex != null) {
+		if (debug > 0) {
+			add_to_data("__return__ = ");
+			expr_gen(ex);
+			add_to_data(";\n\trecursive--;\n\t");
+			add_to_data("return __return__;");
+		} else {
+			add_to_data("return ");
+			expr_gen(ex);
+			add_to_data(";");
+		}
+	} else {
+		if (debug > 0) {
+			add_to_data("recursive--;\n\t");
+			add_to_data("return __return__;");
+		} else {
+			add_to_data("return 0;");
+		}
+	}
+	return;
+}
+
+method void gen_switch()
+{
+
+	if (ty == Aclass.$Cswitch) {
+		add_to_data("switch (");
+		ex := side.get_switch_expr(stm);
+		expr_gen_var(ex);
+		ex := _expr_stk.pop();
+		ex.data_to_string(emmiter.get_data());
+		emmiter.fix_datal();
+		add_to_data(") {\n");
+		pad(padde);
+	}
+	ex := stm.get_expression();
+	if (ex != null) {
+		expr_gen_case(ex, padde);
+	}
+	stack.push(l);
+	stack.push(i + 1);
+	stack.push(body);
+	stack.push(end);
+
+	end := caseend;
+
+	buf := stm.get_else();
+	if (buf != null) {
+		stack.push(buf.length());
+		stack.push(0);
+		stack.push(buf);
+		stack.push(end);
+	}
+
+
+	i := -1;
+	l := 0;
+	body := stm.get_statements();
+	if (body != null) {
+		l := body.length();
+	}
+	padde := padde + 1;
+	return;
+}
+
+method void gen_while()
+{
+	add_to_data("while (");
+	ex := stm.get_expression();
+	if (ex != null) {
+		expr_gen(ex);
+	}
+	add_to_data(") {");
+	stack.push(l);
+	stack.push(i + 1);
+	stack.push(body);
+	stack.push(end);
+	end := "}";
+	i := -1;
+	l := 0;
+	body := stm.get_statements();
+	if (body != null) {
+		l := body.length();
+	}
+	padde := padde + 1;
+	return;
+}
+
+method void gen_do()
+{
+	ex := stm.get_expression();
+	if (ex != null) {
+		expr_gen(ex);
+	}
+	add_to_data(";");
+	return;
+}
+
+method void gen_let()
+{
+	ex := stm.get_expression();
+	if (ex != null) {
+		expr_gen(ex);
+	}
+	add_to_data(";");
+	return;
+}
+
+method void next_statement()
+{
+	i := i + 1;
+	if (i >= l && end != null) {
+		padde := padde - 1;
+		add_to_data("\n");
+		pad(padde);
+		add_to_data(end);
+	}
+
+	while ((i >= l) && (stack.length() > 0)) {
+		end := stack.pop();
+		body := stack.pop();
+		i := stack.pop();
+		l := stack.pop();
+		if (i >= l && end != null) {
+			if (end != switchend) {
+				padde := padde - 1;
+			}
+			add_to_data("\n");
+			pad(padde);
+			add_to_data(end);
+		}
+	}
+	return;
+}
+
+method void gen_statements()
+{
+	switchend := "} ";
+	caseend := "\tbreak;";
+
+	stack := buffer.new(4, 0);
+	l := body.length();
+	i := 0;
+	padde := 1;
+	end := "}";
+	while (i < l) {
+		stm := body.get_at(i);
+		ty := stm.get_type();
+		if (ty == Aclass.$Cifblock) {
+			transform_ifblock();
+		}
+		if ((ty != Aclass.$Cifblock) &&
+		    (ty != Aclass.$Celseif) &&
+		    (ty != Aclass.$Celse)) {
+			add_to_data("\n");
+			pad(padde);
+		}
+		if (ty == Aclass.$Cifblock || ty == Aclass.$Cswitchblock) {
+			prepare_ifblock();
+		} else if ((ty == Aclass.$Cif) || (ty == Aclass.$Celseif)) {
+			gen_if();
+		} else if (ty == Aclass.$Celse) {
+			add_to_data(" else {");
+			padde := padde + 1;
+		} else if (ty == Aclass.$Cdefault) {
+			add_to_data("default:");
+			padde := padde + 1;
+		} else if (ty == Aclass.$Cbreak) {
+			add_to_data("break;");
+		} else if (ty == Aclass.$Creturn) {
+			gen_return();
+		} else if (ty == Aclass.$Cdo) {
+			gen_do();
+		} else if (ty == Aclass.$Clet) {
+			gen_let();
+		} else if (ty == Aclass.$Cswitch || ty == Aclass.$Ccase) {
+			gen_switch();
+		} else if (ty == Aclass.$Cwhile) {
+			gen_while();
+		} else {
+			add_to_data("ERROR !!");
+		}
+		next_statement();
+	}
+	add_to_data("\n");
+	std.delete(stack);
+	return;
+}
+
+method void pad(in int padde)
+{
+	if (0 == 0) {
+		emmiter.pad(padde);
+	}
+	return;
+}
+
+
+} // class
+

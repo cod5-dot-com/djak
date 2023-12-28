@@ -1,8 +1,6 @@
 ﻿
-Public Domain the DJak compiler
-================================
-
-This public domain software is a sustainable economy project.
+Public Domain "Just A C Kit" compiler
+=====================================
 
 
 The Jack 3.0.3 Programming language

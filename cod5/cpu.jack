@@ -1,0 +1,220 @@
+
+class cpu {
+field wire a;
+field wire b;
+field wire c;
+field wire d;
+field wire ir;
+field wire pc;
+
+field fetch fetch0;
+field alu alu0;
+
+field array mem;
+
+const int MEMSIZE := 729;
+const int TS := 27; /* 27 for 64bit, 11 for 32 bit, 3 for 16bit */
+const int A := 1;
+const int B := 2;
+const int C := 3;
+
+constructor cpu new() 
+{
+	a := wire.new(cpu.$TS + 5, "A", 1);
+	b := wire.new(cpu.$TS + 5, "B", 1);
+	c := wire.new(cpu.$TS + 5, "C", 1);
+	d := wire.new(cpu.$TS, "D", 1);
+	pc := wire.new(cpu.$TS, "PC", 1);
+	ir := wire.new(5, "IR", 1);
+
+	fetch0 := fetch.new();
+	alu0 := alu.new();
+	mem := array.new(cpu.$MEMSIZE);
+	return this;
+}
+
+virtual void dispose()
+{
+	return;
+}
+
+method void reset()
+{
+	return;
+}
+
+
+method void always()
+{
+	var wire ins;
+	var wire mode;
+	var wire src;
+	var wire write;
+	var wire jump;
+	var wire lo;
+	var wire hi;
+	var wire incx;
+	var wire bus;
+	var wire alu;
+	var wire cond;
+	var wire zero;
+	var wire aa;
+	var wire bb;
+	var wire cc;
+	var wire memin;
+	var wire pcpo;
+	var wire pcm;
+	var wire pcp;
+	var wire pctmp;
+	var wire sign;
+	var wire ge;
+	var wire gt;
+	var wire le;
+	var wire lt;
+	var wire eq;
+	var wire ne;
+
+	wire.set_defaults(cpu.$TS + 5, "", 0);
+
+	fetch0.always(ir, d);
+	ir.print();
+
+	zero := wire.c("00000 00000 00000 00000 00000 00000 00");
+
+	/* 	--  add
+		-0  sub
+		-+  shift
+		0-  cons
+		00  any
+		0+  xor
+		+-  load
+		+0  store
+		++  jump
+	 */
+	ins := wire.d(2, "ins", 0);
+	wire.shift3(ins, ir, wire.c("00-0"));	
+	wire.xor3(ins, ins, wire.c("--"));
+
+	mode := wire.d(2, "mode", 0);
+	wire.shift3(mode, ir, wire.c("000-"));
+	wire.xor3(mode, mode, wire.c("--"));
+	
+	src := wire.d(1, "src", 0);
+	wire.xor3(src, ir, wire.c("-"));
+
+	write := wire.d(1, "write", 0);
+	wire.compare3(write, ins, wire.c("+0"));
+		
+	jump := wire.d(1, "jump", 0);
+	wire.compare3(jump, ins, wire.c("++"));
+
+	lo := wire.d(cpu.$TS, "lo", 0);
+	hi := wire.d(cpu.$TS, "hi", 0);
+	alu := wire.d(cpu.$TS + 5, "alu", 0);
+	aa := wire.d(cpu.$TS + 5, "aa", 0);
+	bb := wire.d(cpu.$TS + 5, "bb", 0);
+	cc := wire.d(cpu.$TS + 5, "cc", 0);
+	incx := wire.d(cpu.$TS + 5, "incx", 0);
+	bus := wire.d(cpu.$TS + 5, "bus", 0);
+	memin := wire.d(cpu.$TS + 5, "memin", 0);
+	pcpo := wire.d(cpu.$TS + 5, "pcpo", 0);
+	pcm := wire.d(cpu.$TS + 5, "pcm", 0);
+	pcp := wire.d(cpu.$TS + 5, "pcp", 0);
+	pctmp := wire.d(cpu.$TS + 5, "pctmp", 0);
+	sign := wire.d(1, "sign", 0);
+	gt := wire.d(1, "gt", 0);
+	lt := wire.d(1, "lt", 0);
+	eq := wire.d(1, "eq", 0);
+	ne := wire.d(1, "ne", 0);
+	ge := wire.d(1, "ge", 0);
+	le := wire.d(1, "le", 0);
+	cond := wire.d(1, "cond", 0);
+
+	wire.mux93(lo, mode,
+		d, b, d,
+		b, d, d,
+		d, d, d);
+
+	wire.mux93(hi, mode,
+		zero, zero, zero,
+		c, zero, zero,
+		zero, zero, zero);
+
+	
+	if (write.get(0) == '0') {
+		// memin := mem[hi lo]	
+	}
+	wire.mux33(bus, src, d, a, memin);
+ 
+	alu0.always(alu, ins, a, bus);
+
+	wire.mux93(aa, mode,
+		alu, a, a,
+		a, a, a,
+		a, a, a);
+	wire.mux33(a, write, a, aa, a);
+
+	wire.mux93(bb, mode,
+		b, b, b,
+		b, b, b,
+		b, b, b);
+	wire.mux33(b, write, b, bb, b);
+
+	wire.inc3(incx, c);
+	wire.mux93(cc, mode,
+		c, c, c,
+		c, c, c,
+		c, c, incx);
+	wire.mux33(c, write, c, cc, c);
+
+	if (write.get(0) != '0') {
+	//	mem[hi lo] := bus;
+	}
+
+	wire.add3(pcpo, pc, wire.c("+")); // normal program counter increment
+
+	wire.sign3(sign, alu);
+	wire.mux33(gt, sign, wire.c("+"), wire.c("+"), wire.c("+"));
+	wire.mux33(ge, sign, wire.c("+"), wire.c("+"), wire.c("+"));
+	wire.mux33(lt, sign, wire.c("+"), wire.c("+"), wire.c("+"));
+	wire.mux33(le, sign, wire.c("+"), wire.c("+"), wire.c("+"));
+	wire.mux33(eq, sign, wire.c("+"), wire.c("+"), wire.c("+"));
+	wire.mux33(ne, sign, wire.c("+"), wire.c("+"), wire.c("+"));
+
+	wire.mux93(cond, mode,
+		wire.c("-"), wire.c("+"), wire.c("+"),
+		wire.c("+"), wire.c("+"), wire.c("+"),
+		wire.c("+"), wire.c("+"), wire.c("+"));
+
+	wire.add3(pcm, c, bus); // FIXME shift c
+	wire.add3(pcp, c, pc);
+
+	wire.mux33(pctmp, cond, pcm, pcpo, pcp);	
+	wire.mux33(pc, jump, pctmp, pcpo, pctmp);	
+
+	if (wire.eq(jump, "-")) { wire.buf3(pc, pctmp); }
+	return;
+}
+
+method wire c(in string s)
+{
+	return wire.c(s);
+}
+
+virtual void clock()
+{
+	always();
+
+	a.clock();
+	b.clock();
+	c.clock();
+	d.clock();
+	pc.clock();
+	ir.clock();
+	fetch0.clock();
+	alu0.clock();
+	return;
+}
+
+}
+

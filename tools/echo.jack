@@ -1,0 +1,107 @@
+/* 
+ *             The authors disclaim copyright to this software.
+ */
+
+class echo
+{
+field file fout;
+field string sout;
+field int index;
+field int size;
+field int argc;
+field array argv;
+field int count;
+field string pad;
+
+constructor echo new(in int argc1, in array argv1, in string sout1)
+{
+	fout := file.new("");
+	sout := sout1;
+	argc := argc1;
+	argv := argv1;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.delete(fout);
+	std.free(this);
+	return;
+}
+
+method void process_data(in int status, in int type, in string data)
+{
+	fout.write(sout, data, type, index, size, {
+		if (status != 200) {
+			console.log("Error writing file");
+			std.exit(-1);
+		}
+		return read_arg();
+	});
+	return 0;
+}
+
+method int read_arg()
+{
+	var string a;
+	index := index + size;
+	if (count >= argc && pad != null) {
+		return 0;
+	}
+	if (pad == null) {
+	
+		if (count >= argc) {
+			pad := "\n";
+		} else {
+			pad := " ";
+		}
+		a := pad;
+	} else {
+		pad := null;
+		a := argv[count];
+	}
+	size := a.length();
+	process_data(200, 0, a);
+	if (pad == null) {
+		count := count + 1;
+	}
+	return 0;
+}
+
+method void run()
+{
+	index := 0;
+	size := 0;
+	count := 1;
+	pad := "";
+	read_arg();
+	return;
+}
+
+} // class
+
+
+class main
+{
+
+function void main()
+{
+	var echo c;
+	var array args;
+	var int n;
+
+	args := std.get_args();
+	n := std.get_argc();
+
+	if (n < 1) {
+		console.log("Usage: echo 'this is my text'");
+		std.exit(-1);
+	}
+	c := echo.new(n, args, "/dev/stdout");
+	c.run();
+	std.loop();
+	std.delete(c);
+	return;
+}
+
+} // class

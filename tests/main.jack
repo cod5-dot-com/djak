@@ -1,0 +1,46 @@
+
+class main {
+
+static int passed;
+static int failed;
+
+function void start(in string msg) 
+{
+	console.log_str("Start test: ");
+	console.log(msg);
+	return;
+}
+
+function void pass(in string msg) 
+{
+	console.log_str("Pass: ");
+	console.log(msg);
+	passed := passed + 1;
+	return;
+}
+
+function void fail(in string msg) 
+{
+	console.log_str("Fail: ");
+	console.log(msg);
+	failed := failed + 1;
+	return;
+}
+
+
+function int main()
+{
+
+	console.log("Just A C Kit 3.0.3 tests...");
+
+	passed := 0;
+	failed := 0;
+
+	t_async.test();
+	t_switch.test();
+	
+	std.loop();
+	return 0;
+}
+
+}

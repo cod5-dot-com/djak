@@ -1,8 +1,34 @@
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
 
-class hash {
+class hash
+{
 field array _arr;
 field int size;
-
 const int Cnext := 0;
 const int Chash := 1;
 const int Ckey := 2;
@@ -10,7 +36,8 @@ const int Cvalue := 3;
 
 constructor hash new(in int size_)
 {
-	var int i; 
+	var int i;
+
 	size := size_;
 	_arr := array.new(size);
 	i := 0;
@@ -23,22 +50,22 @@ constructor hash new(in int size_)
 
 virtual void dispose()
 {
-	var int i; 
+	var int i;
 	var array next;
 	var array cur;
+
 	i := 0;
 	while (i < size) {
 		cur := _arr[i];
 		while (cur != null) {
 			next := cur[hash.$Cnext];
-			cur.dispose();
+			std.delete(cur);
 			cur := next;
 		}
 		_arr[i] := null;
 		i := i + 1;
 	}
-
-	_arr.dispose();
+	std.delete(_arr);
 	std.free(this);
 	return;
 }
@@ -52,15 +79,16 @@ method array add(in string key, in array value)
 	var array prev;
 	var array ret;
 	var int cmp;
+
 	h := key.get_hash();
 	hh := h;
-	h := h % size; 
+	h := h % size;
 	old := _arr[h];
 	cur := null;
 	if (old == null) {
 		cur := array.new(4);
 		cur[hash.$Cnext] := null;
-		_arr[h] := cur;		
+		_arr[h] := cur;
 	}
 	next := old;
 	prev := null;
@@ -75,11 +103,11 @@ method array add(in string key, in array value)
 					_arr[h] := cur;
 				} else {
 					prev[hash.$Cnext] := cur;
-				}		
+				}
 			} else if (cmp == 0) {
 				cur := next;
 				ret := next[hash.$Cvalue];
-			}	
+			}
 		} else if (next[hash.$Chash] > hh) {
 			cur := array.new(4);
 			cur[hash.$Cnext] := next;
@@ -87,12 +115,12 @@ method array add(in string key, in array value)
 				_arr[h] := cur;
 			} else {
 				prev[hash.$Cnext] := cur;
-			}		
+			}
 		}
 		prev := next;
 		next := next[hash.$Cnext];
 	}
-	
+
 	if (cur == null) {
 		cur := array.new(4);
 		cur[hash.$Cnext] := null;
@@ -100,7 +128,7 @@ method array add(in string key, in array value)
 			_arr[h] := cur;
 		} else {
 			prev[hash.$Cnext] := cur;
-		}		
+		}
 	}
 	cur[hash.$Chash] := hh;
 	cur[hash.$Ckey] := key;
@@ -114,6 +142,7 @@ method array get(in string key)
 	var int h, hh;
 	var array next;
 	var int cmp;
+
 	h := key.get_hash();
 	hh := h;
 	h := h % size;
@@ -125,14 +154,15 @@ method array get(in string key)
 				return null;
 			} else if (cmp == 0) {
 				return next[hash.$Cvalue];
-			}	
+			}
 		} else if (next[hash.$Chash] > hh) {
 			return null;
 		}
 		next := next[hash.$Cnext];
 	}
-	
+
 	return null;
 }
 
 } // class
+

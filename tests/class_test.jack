@@ -1,13 +1,18 @@
-class buffer {
+/*
+class bufferi {
+
 field array _arr;
 field int size;
 field int pos;
-
-constructor buffer new(in int initial_size)
+field int take;
+field int taint;
+constructor buffer new(in int initial_size, in int take_)
 {
 	var int i;
+	take := take_;
 	_arr := array.new(initial_size);
 	size := initial_size;
+	taint := take_; // FIXME must find if child is twice in that array
 	pos := 0;
 	i := 0;
 	while (i < initial_size) {
@@ -16,29 +21,20 @@ constructor buffer new(in int initial_size)
 	}
 	return this;
 }
-
-method void dispose_all()
-{
-	var int i;
-	if (_arr == null) {
-		dispose();
-		return;
-	}
-	i := 0;
-	while (i < size) {
-		std.delete(_arr[i]);
-		i := i + 1;
-	}
-	dispose();
-	return;
-}
-
+*/
+/*
 virtual void dispose()
 {
-	if (_arr != null) {
-		_arr.dispose();
-		_arr := null;
+	var int i;
+	if (_arr != null && take != 0) {
+		i := 0;
+		while (i < pos) {
+			delete_at(i);
+			i := i + 1;
+		}
 	}
+	std.delete(_arr);
+	_arr := null;
 	std.free(this);
 	return;
 }
@@ -56,14 +52,40 @@ method int empty()
 	return 1;
 }
 
+method void delete_at(in int idx)
+{
+	var array elem;
+	var int i;
+	var int k;
+	if (taint != 0) {
+		i := 0;
+		elem := _arr[idx];
+		if (elem == null) {
+			return;
+		}
+		while (i < pos) {
+			if (_arr[i] == elem && i != idx) {
+				_arr[idx] := null;
+				return;
+			}
+			i := i + 1;
+		}
+
+	}
+	std.delete(_arr[idx]);
+	_arr[idx] := null;
+	return;
+}
+
 method void set_at(in int idx, in array elem)
 {
 	var array a;
 	var int i;
-	if (idx >= size) {
+
+	if (idx + 1 >= size) {
 		a := array.new(idx + 8);
 		i := 0;
-		while (i < size) {
+		while (i < pos) {
 			a[i] := _arr[i];
 			i := i + 1;
 		}
@@ -75,12 +97,22 @@ method void set_at(in int idx, in array elem)
 
 		_arr.dispose();
 		_arr := a;
+	} else if (take != 0 && idx < pos) {
+		delete_at(idx);
 	}
 
+	if (take) {
+		std.move(elem);
+	}
+	while (pos < idx) {
+		_arr[pos] := 0;
+		pos := pos + 1;
+	}
 	_arr[idx] := elem;
 	if ((idx + 1) > pos) {
 		pos := idx + 1;
 	}
+	_arr[pos] := 0;
 
 	return;
 }
@@ -97,6 +129,21 @@ method void push(in array elem)
 	set_at(pos, elem);
 	pos := p;
 	return 0;
+}
+
+method void append(in buffer buf)
+{
+	var int l;
+	var int j;
+	j := buf.length();
+	l := length() + j;
+	pos := l;
+	while (j > 0) {
+		l := l - 1;
+		j := j - 1;
+		set_at(l, buf.get_at(j));
+	}
+	return;
 }
 
 method void set_last(in array elem)
@@ -163,6 +210,6 @@ method array shift()
 	
 	return elem;
 }
-
+*/
 } // class
 

@@ -1,4 +1,32 @@
-class string {
+/*
+ *          MMXXIII December 11 PUBLIC DOMAIN by O'ksi'D
+ *
+ *        The authors disclaim copyright to this software.
+ *
+ * Anyone is free to copy, merge, modify, publish, use, compile, sell,
+ * or distribute this software, either in source code form or as a
+ * compiled binary, for any purpose, commercial or non-commercial, and
+ * by any means.
+ *
+ * Anyone is free to create, communicate to the public, use, sell,
+ * repair, modify, test, distribute or configure hardware in finished
+ * or intermediate form, whether by manufacture, assembly, compiling,
+ * processing, loading or applying this software or another hardware or
+ * otherwise.
+ *
+ * THE SOFTWARE AND/OR HARDWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY
+ * OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT OF ANY PATENT, COPYRIGHT, TRADE SECRET OR OTHER
+ * PROPRIETARY RIGHT.  IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE AND/OR HARDWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
+ * AND/OR HARDWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+ */
+
+class string
+{
 field array _str;
 field int size;
 
@@ -12,8 +40,7 @@ constructor string new(in int alloc)
 
 virtual void dispose()
 {
-	std.strfree(this);
-	std.free(this); 
+	std.string_release(this);
 	return;
 }
 
@@ -22,7 +49,7 @@ method array get_buf()
 	return _str;
 }
 
-method void set_buf(in array b)
+method void set_buf(in object b)
 {
 	_str := b;
 	return;
@@ -37,6 +64,7 @@ method void set_size(in int ns)
 {
 	var string ops;
 	var array b;
+
 	if (size > ns) {
 		return;
 	}
@@ -45,15 +73,17 @@ method void set_size(in int ns)
 	b := _str;
 	_str := ops.get_buf();
 	ops.set_buf(b);
-	ops.dispose();
+	std.delete(ops);
 	size := ns;
 	return;
-
 }
 
 method int length()
 {
-	return std.strlen(this);
+	var int l;
+
+	l := std.strlen(this);
+	return l;
 }
 
 method void set_int(in int num)
@@ -66,7 +96,6 @@ method void set(in string src)
 	var int sl;
 	sl := std.strlen(src);
 	if (size < sl) {
-		std.strfree(this);
 		std.stralloc(this, sl+1);
 		size := sl;
 	}
@@ -80,7 +109,7 @@ method void add_char(in int num)
 	var int sl, tl, ns, i;
 	sl := 6;
 	tl := std.strlen(this);
-		
+
 	ns := sl + tl + 1;
 	i := 0;
 	if (size <= ns) {
@@ -105,7 +134,7 @@ method void add_at(in int tl, in string src)
 	var int sl, ns;
 	sl := std.strlen(src);
 	ns := sl + tl + 1;
-	if (ns >= size) {	
+	if (ns >= size) {
 		set_size(ns * 2);
 	}
 	std.append(this, tl, src, 0,  ns);
@@ -138,7 +167,7 @@ method void substr(in int start_pos, in int length_, out string result)
 	if ((start_pos >= len) || (length_ < 1)) {
 		result.set("");
 		return;
-	}	
+	}
 	result.set_size(length_ + 1);
 	std.str_set_at(result, 0, '\0');
 	std.append(result, 0, this, start_pos, length_);
@@ -157,7 +186,7 @@ method string to_string()
 
 method int to_int()
 {
-	return std.str_toint(this);	
+	return std.str_toint(this);
 }
 
 method int compare(in string other)
@@ -172,7 +201,12 @@ method int get_hash()
 
 method int get_at(in int at)
 {
-	if ((at < size) && (size >= 0)) {
+	var int l;
+	l := size;
+	if (l < 1) {
+		l := std.strlen(this);
+	}
+	if ((at < l) && (at >= 0)) {
 		return std.str_get_at(this,at);
 	}
 	return '\0';
@@ -180,10 +214,17 @@ method int get_at(in int at)
 
 method void set_at(in int at, in int v)
 {
-	if ((at < size) && (size >= 0)) {
+	var int l;
+	l := size;
+	if (l < 1) {
+		l := std.strlen(this);
+	}
+
+	if ((at < l) && (at >= 0)) {
 		std.str_set_at(this, at, v); // FIXME UTF-8
 	}
 	return;
 }
 
 } // class
+
