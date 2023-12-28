@@ -1,0 +1,42 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class UnitXml {
+	function boolean compile() {
+		var Xml x;
+		var File dst;
+
+		let dst = File.new("test.xml", true);
+		let x = Xml.new();
+		do x.addElement("hello");
+
+		do x.addAttribute("id", "jml'");
+		do x.addContent("Jumps over the lazy dog");
+		do x.addElement("bob");
+		do x.addElement("sub");
+		do x.addContent("the quick brown fox");
+		do x.closeElement("bob");
+		do x.addContent("must be in hello at end");
+		do x.addElement("empty");
+
+		do x.dump(dst);
+		do dst.dispose();
+		do x.dispose();
+		return true;
+	}
+
+	function boolean isOk(int l) {
+		let l = l + 1;
+		do UnitXml.compile();
+		do Unit.log(l, "Xml...", true);
+		return Memory.checkEmpty();
+	}
+}
+

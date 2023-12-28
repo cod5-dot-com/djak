@@ -1,0 +1,30 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Callback {
+	field int callback;
+
+	constructor Callback new() {
+		return this;
+	}
+	
+	method void dispose() {
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method int callback(int a, int b) {
+		return 0;
+	}
+
+	method int invoke(int a, int b) {
+		return callback(a, b);
+	}
+} 

@@ -1,0 +1,111 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class UnitFile {
+	function void getJackFiles(Buffer lst, String dir) 
+	{
+		var File f;
+		var String p;
+		var int i;
+		var int l;
+		var int j;
+		var String c;
+		var Buffer d;
+
+		let i = 0;
+		let f = File.new(dir, false);
+		if (f) {
+			let d = f.list();
+			//let d = Buffer.new(1);
+			if (d = 0) {
+				do f.dispose();
+				return;
+			}
+		}
+		while (i < d.getSize()) {
+			let p = d.getAt(i);
+			let l = p.length();
+			if ((l > 0) & (p.charAt(l - 1) = 47)) {
+				do Output.printString(p);
+				do Output.printString( " DIR ");
+				do Output.println();
+				//do UnitFile.getJackFiles(lst, p);
+				do p.dispose();
+				let l = l;
+			} else { if (l > 5) {
+				let c = ".jack";
+				let j = 5;
+				while (j > 0) {
+					let j = j - 1;
+					let l = l - 1;
+					if (~(p.charAt(l) = c.charAt(j))) {
+						let j = -1;
+					}
+				}
+				if (j = 0) {
+					do lst.append(p);
+				} else {
+					do p.dispose();
+				}
+			} else {
+				do p.dispose();
+			}}
+			let i = i + 1;
+		}
+		do d.dispose();
+		do f.dispose();
+		return;
+	}
+
+	function boolean testRec(int l)
+	{
+		var Buffer files;
+		var File f;
+		var String s;
+		var int i;
+		let l = l + 1;
+		let files = Buffer.newString(1);
+		do UnitFile.getJackFiles(files, "./tests/");
+		let i = 0;
+		while (i < files.getSize()) {
+			let s = files.getAt(i);
+			do Unit.log(l, s, true);
+			let i = i + 1;
+		}
+		do files.dispose();
+		return true;
+	}
+
+
+	function boolean t2() {
+		var File src, dst;
+		let src = File.new("tests/Main.jack", false);
+		let dst = File.new("testo.xml", true);
+		do dst.seek(1000);
+		do dst.writeByte(65);
+		do dst.dispose();
+		do src.dispose();
+		return true;
+
+	}
+
+	function boolean isOk(int l) {
+		var boolean r;
+		let l = l + 1;
+		let r = UnitFile.testRec(l);
+		let r = Memory.checkEmpty();
+		let r = UnitFile.t2();
+		do Unit.log(l, "File...", r);
+		let r = UnitFile.testRec(l);
+		do Unit.log(l, "File...", r);
+		return Memory.checkEmpty();
+	}
+}
+

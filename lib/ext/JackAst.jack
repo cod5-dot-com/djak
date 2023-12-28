@@ -1,0 +1,252 @@
+/*
+ * 			    Abstract Syntax Tree
+ *
+ *                      17 april MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+class JackAst {
+	field int tag;
+	field String data;
+	field JackAst left;	
+	field JackAst child; // or right
+	field JackAst next;
+	field JackAst parent;	
+	field int line;	
+	field String file;	
+	field int id;
+
+	constructor JackAst new (int tag_, String data_, JackAst parent_) {
+		let tag = tag_;
+		let data = data_.copy();
+		let parent = parent_;
+		let child = null;
+		let next = null;
+		let left = null;
+		let line = 0;
+		let file = "";
+		let id = 0;
+		return this;
+	}
+	
+	method void dispose() {
+		var JackAst c, d;
+
+		do data.dispose();
+		let c = child;
+		while (~(c = null)) {
+			let d = c.getNext();	
+			do c.dispose();
+			let c = d;
+		}
+		if (left) {
+			do left.dispose();
+		}
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method void setLine(int line_, String file_) {
+		let line = line_;
+		let file = file_;
+		return;
+	}
+
+	method void ident(File f, int level) {
+		while (level > 0) {
+			let level = level - 1;
+			do f.writeString("  ");
+		}
+		return;			
+	}
+	method void process(File f, int level, JackParser par) {
+		var JackAst c, d;
+		do ident(f, level);
+		do f.writeString("tag=");
+		do f.writeString(par.getConst(tag));
+		do f.writeString(" data=");
+		do f.writeString(data);
+		do f.writeByte(10);
+		let level = level + 1;
+		if (left) {
+			do ident(f, level);
+			do f.writeString("left:");
+			do f.writeByte(10);
+			do left.process(f, level + 1, par);
+		}
+		let c = child;
+		while (~(c = null)) {
+			do c.process(f, level, par);
+			let d = c.getNext();	
+			let c = d;
+		}
+		return;
+	}
+
+
+	method JackAst add(int tag_, String data_) {
+		var JackAst a;
+		let a = JackAst.new(tag_, data_, this);
+		do append(a);
+		return a;
+	}
+
+	method JackAst addop(String data_, JackAst left_) {
+		var JackAst a;
+		let a = JackAst.new(C.OP(), data_, this);
+	 	do a.setLeft(left_);	
+		return a;
+	}
+
+	method JackAst set(int tag_, String data_) {
+		var JackAst c;
+		let c = child;
+		while (~(c = null)) {
+			if ((c.getTag() = tag_) & 
+				(false=data_.compare(c.getData())))
+			{
+				return c;
+			}
+			let c = c.getNext();	
+		}
+		return  add(tag_, data_);
+	}
+
+
+	method JackAst append(JackAst a) {
+		var JackAst c;
+		let c = child;
+		if (c = null) {
+			let child = a;
+		} else {
+			while (~(c.getNext() = null)) {
+				let c = c.getNext();
+			}
+			do c.setNext(a);
+		}
+		return a;
+	}
+
+	method JackAst removeChild(JackAst old) {
+		var JackAst c, d;
+		let c = child;
+		if (c = null) {
+			return null;
+		} 
+		if (old = child) {
+			let child = child.getNext();
+			do old.setNext(null);
+			do old.setParent(null);
+			return old;
+		}
+		let d = c.getNext();
+		while (~(d = null)) {
+			if (d = old) {
+				do c.setNext(d.getNext());
+				do old.setNext(null);
+				do old.setParent(null);
+				return old;
+			}
+			let c = d;
+			let c = c.getNext();
+		}
+		return null;
+	}
+
+	method JackAst replaceChild(JackAst old, JackAst new_) {
+		var JackAst c, n;
+		if (child = null) {
+			return null;
+		}
+		let c = child;
+		if (c = old) {
+			do new_.setNext(c.getNext());
+			do c.setNext(null);
+			let child = new_;
+			do new_.setParent(this);
+			return null;
+		}
+	
+		let n = c.getNext();
+		while (~(n = null)) {
+			if (n = old) {
+				do new_.setNext(n.getNext());
+				do n.setNext(null);
+				do c.setNext(new_);
+				do new_.setParent(this);
+				return new_;
+			}
+			let c = n;	
+			let n = c.getNext();
+		}
+		return null; 	
+	}
+
+	method void setId(int n) {
+		let id = n;
+		return;
+	}
+
+	method void getId() {
+		return id;
+	}
+
+	method void setTag(int n) {
+		let tag = n;
+		return;
+	}
+
+	method void setParent(JackAst n) {
+		let parent = n;
+		return;
+	}
+
+
+	method void setLeft(JackAst n) {
+		let left = n;
+		return;
+	}
+
+	method void setChild(JackAst n) {
+		let child = n;
+		return;
+	}
+
+	method void setNext(JackAst n) {
+		let next = n;
+		return;
+	}
+
+	method int getTag() {
+		return tag;
+	}
+
+	method String getFile() {
+		return file;
+	}
+
+	method int getLine() {
+		return line;
+	}
+
+	method String getData() {
+		return data;
+	}
+
+	method JackAst getChild() {
+		return child;
+	}
+
+	method JackAst getLeft() {
+		return left;
+	}
+	method JackAst getParent() {
+		return parent;
+	}
+	method JackAst getNext() {
+		return next;
+	}
+}
+

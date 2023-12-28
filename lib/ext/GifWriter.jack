@@ -1,0 +1,682 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+// https://www.jonolick.com/uploads/7/9/2/1/7921194/jo_gif.cpp
+
+class GifWriter {
+	field File fp;
+	field Array palette; // byte[0x300]
+	field int width;
+	field int height;
+	field int repeat;
+	field int numColors;
+	field int palSize;
+	field int frame;
+	field int numBits;
+	field int curBits;
+	field int outBits;
+	field int idx;
+	field Array buf;
+
+	constructor GifWriter new() {
+		var int i;
+		let fp = null;
+		let palette = Array.new(768);
+		let i = 0;
+		while (i < 768) {
+			let palette[i] = 0;
+			let i = i + 1;
+		}
+		let width = 0;
+		let height = 0;
+		let repeat = 0;
+		let numColors= 0;
+		let palSize = 0;
+		let frame = 0;
+
+		let numBits = 0;
+		let curBits = 0;
+		let outBits = 0;
+		let buf = Array.new(256);
+		return this;	
+	}
+
+	method void dispose() {
+		if (fp) {
+			do fp.dispose();
+		}
+		do palette.dispose();
+		return;
+	}
+
+	method void out8(int code) {
+		if (fp) {
+			do fp.writeByte(code);
+		}
+		return;
+	}
+
+	method void out16le(int code) {
+		do out8(code & 255);
+		do out8((code / 256) & 255);
+		return;
+	}
+
+	method void lzwWrite(int code) {
+		var int i, j;
+		var int outBits_;
+		var int curBits_;
+		var int idx_;
+		var Array buf_;
+		let buf_ = buf;
+		let idx_ = idx;
+		let outBits_ = outBits | Math.shiftLeft(code, curBits);
+		let curBits_ = curBits + numBits;
+		while (curBits_ > 7) {
+			let buf_[idx_] = outBits_ & 255;
+			let idx_ = idx_ + 1;
+			let outBits_ = Math.shiftRight(outBits_, 8);
+			let curBits_ = curBits_ - 8;
+			if (idx_ > 254) {
+				do out8(idx_);
+				let i = 0;
+				let j = idx_;
+				while (i < j) {
+					do out8(buf_[i]);
+					let i = i + 1;
+				}
+				let idx_ = 0;
+			} 
+		}
+		let idx = idx_;
+		let outBits = outBits_;
+		let curBits = curBits_;
+		return;
+	}
+
+	method void lzwEncode(Array in_, int len) {
+		var int maxcode;
+		var int hashSize;
+		var Array codetab;
+		var Array hashTbl;
+		var int i;
+		var int free_ent;
+		var int inp;
+		var int ent;
+		var int c;
+		var int fcode;
+		var int key;
+		var int kk;
+		var boolean CONTINUE;
+
+		let numBits = 9;
+		let idx = 0;
+		let maxcode = 511;
+		let hashSize = 5003;
+		let codetab = Array.new(hashSize);
+		let hashTbl = Array.new(hashSize);
+		let i = 0;
+		while (i < hashSize) {
+			let hashTbl[i] = -1;
+			let i = i + 1;
+		}
+
+		do lzwWrite(256);
+
+		let inp = 0;
+		let free_ent = 258;
+		let ent = in_[inp];
+		let inp = inp + 1;
+
+		let len = len -1;
+		while (len > 0) {
+			let CONTINUE = true;
+			let c = in_[inp];
+			let inp = inp  + 1;
+			let fcode = Math.shiftLeft(c, 12) + ent;
+			let key = Math.shiftLeft(c, 4);
+			let key = Math.xor(ent, key);
+			let kk = hashTbl[key];
+			while (CONTINUE & (kk > -1)) {
+				if (kk = fcode) {
+					let ent = codetab[key];
+					let CONTINUE = false;
+				}
+				if (CONTINUE) {
+					let key = key + 1;
+					if ((key > (hashSize-1))) {
+						let key = key - hashSize;
+					}
+					let kk = hashTbl[key];
+				}
+			}
+//do Output.printInt(kk);
+//do Output.println();
+			if (CONTINUE) {
+				do lzwWrite(ent);
+				let ent = c;
+				if (free_ent < 4096) {
+					if (free_ent > maxcode) {
+						let numBits = numBits + 1;
+						if (numBits = 12) {
+							let maxcode = 4096;
+						} else {
+							let maxcode =
+							  Math.shiftLeft(1,
+								numBits) - 1;
+						}
+					}
+					let codetab[key] = free_ent;
+					let free_ent = free_ent + 1;
+					let hashTbl[key] = fcode;
+				} else {
+					let i = 0;
+					while (i < hashSize) {
+						let hashTbl[i] = -1;
+						let i = i + 1;
+					}
+					let free_ent = 258;
+					do lzwWrite(256);
+					let numBits = 9;
+					let maxcode = 511;
+				}
+			}
+			let len = len - 1;
+		}
+		do lzwWrite(ent);
+		do lzwWrite(257);
+		do lzwWrite(0);
+		if (idx) {
+			do out8(idx);
+			let i = 0;
+			while (i < idx) {
+				do out8(buf[i]);
+				let i = i + 1;
+			}
+			let idx = 0;
+		}
+		return;
+	}
+
+	method boolean start(int w , int h, int repeat_, int numColors_) {
+		if (numColors_ > 255) {
+			let numColors_ = 255;
+		} else { if (numColors_ < 2) {
+			let numColors_ = 2;
+		}}
+		let width = w;
+		let height = h;
+		let repeat = repeat_;
+		let numColors = numColors_;
+		let palSize = Math.log2(numColors_);
+		do out8(71); // "GIF89a"	
+		do out8(73); 	
+		do out8(70); 	
+		do out8(56); 	
+		do out8(57); 	
+		do out8(97);
+ 		
+		do out16le(width);
+		do out16le(height);
+		do out8(240 | (palSize));
+		do out16le(0);
+		return true;
+	}
+
+	method boolean end() {
+		return out8(59);
+	}
+
+	method boolean frame_(Buffer rgba, int delayCsec, boolean localPalette){
+		var int size_;
+		var Array localPalTbl;
+		var Array  palette_;
+		var Array indexedPixels;
+		var int k;
+		var int c;
+		var int rgb0;
+		var int rgb1;
+		var int rgb2;
+		var int bestd;
+		var int best;
+		var int i;
+		var int j;
+		var int rgb;
+		var int bb;
+		var int gg;
+		var int rr;
+		var int d;
+		var int p;
+		var Array a;
+		let size_ = width * height;
+		let localPalTbl = Array.new(768);
+		let i = 0;
+		
+		while (i < 768) {
+			let localPalTbl[i] = 0;
+			let i = i + 1;
+		}
+		if ((frame = 0) | (false=(localPalette))) {
+			let palette_ = palette;
+		} else {
+			let palette_ = localPalTbl;
+		}	
+		if ((frame = 0) | localPalette) {
+			do quantize(rgba, size_, 1, palette, numColors);
+		}
+		
+		let indexedPixels = Array.new(size_);
+		
+		let a = rgba.getArray();
+		let k = 0;
+	do Output.printInt(k);
+	do Output.printString(" GIF ");
+	do Output.printInt(size_);
+	do Output.println();
+		let c = numColors;
+		while (k < size_) {
+			let bestd = 2147483647; // 0x7FFFFFFF
+			let best = -1;
+			let i = 0;
+			let rgb = a[k];
+			let rgb0 = rgb & 255;
+			let rgb1 = (rgb / 256) & 255;
+			let rgb2 = (rgb / 65536) & 255;
+			while (i < c) {
+				let p = palette_[i];
+				/*let bb = (p & 255) - rgb0;
+				let gg = ((p / 256) & 255) - rgb1;
+				let rr = ((p / 65536) & 255) - rgb2;
+				let d = (bb*bb) + (gg*gg) + (rr*rr);*/
+				let bb = (p & 255) - rgb0;
+				let gg = (Math.shiftRight(p, 8) & 255) - rgb1;
+				let rr = (Math.shiftRight(p, 16) & 255) - rgb2;
+				let d = (bb*bb) + (gg*gg) + (rr*rr);
+				if (d < bestd) {
+					let bestd = d;
+					let best = i;
+				}
+				let i = i + 1;
+			}
+			let indexedPixels[k] = best;
+
+			let k = k + 1;
+		}
+		if (frame = 0) {
+			let i = 0;
+			let j = Math.shiftLeft(1, palSize + 1);
+			while (i < j) {
+				let d = palette[i];
+				do out8(d & 255);
+				let d = d / 256;
+				do out8(d & 255);
+				let d = d / 256;
+				do out8(d & 255);
+				let i = i + 1;
+			}
+			if (repeat > -1) {
+				do out8(33);
+				do out8(255);
+				do out8(11);
+				do out8(78); // NETSCAPE2.0
+				do out8(69);
+				do out8(84);
+				do out8(83);
+				do out8(67);
+				do out8(65);
+				do out8(80);
+				do out8(69);
+				do out8(50);
+				do out8(46);
+				do out8(48);
+				do out8(3);
+				do out8(1);
+				do out16le(repeat);
+				do out8(0);
+			}
+		}
+		do out8(33);
+		do out8(249);
+		do out8(4);
+		do out8(0);
+		do out16le(delayCsec);
+		do out16le(0); // transparent color index
+		do out8(44); // image desciptor
+		do out8(0);
+		do out8(0);
+		do out8(0);
+		do out8(0);
+		do out16le(width);
+		do out16le(height);
+		if ((frame = 0) | (false=localPalette)) {
+			do out8(0);
+		} else {
+			do out8(128 | palSize);
+			let i = 0;
+			let j = Math.shiftLeft(1, palSize + 1);
+			while (i < j) {
+				let d = palette[i];
+				do out8(d & 255);
+				let d = d / 256;
+				do out8(d & 255);
+				let d = d / 256;
+				do out8(d & 255);
+				let i = i + 1;
+			}
+
+		}
+	do Output.printInt(k);
+	do Output.printString(" OUT ");
+	do Output.printInt(size_);
+	do Output.println();
+		do out8(8);
+		do lzwEncode(indexedPixels, size_);
+		/*let i = 0;
+		while (i < size_) {
+			do Output.printInt(indexedPixels[i]);
+			let i = i + 1;
+		}*/
+		do out8(0);
+		let frame = frame + 1;
+		do indexedPixels.dispose();
+	do Output.printString(" END ");
+	do Output.printInt(frame);
+	do Output.println();
+		return true;
+	}
+
+	function int clamp(int a, int b, int c) {
+		if (a < b) {
+			return b;
+		} 
+		if (a > c) {
+			return c;
+		}
+		return a;
+	}
+
+	method void quantize(Buffer rgba, int rgbaSize, int sample, Array map,
+		int numColors_)
+	{
+		// FIXME must use 6-8-5 levels RGB index = (40×R)+(5×G)+B 
+		// plus 14 levels of gray
+		let map[0] = 0;
+		let map[1] = 16777215;
+		let map[2] = 32768;
+		let map[3] = 8421376;
+		let map[4] = 128;
+		let map[5] = 8388736;
+		let map[6] = 32896;
+		let map[7] = 12632256;
+		let map[8] = 12639424;
+		let map[9] = 10930928;
+		let map[10] = 16777164;
+		let map[11] = 13408614;
+		let map[12] = 16737843;
+		let map[13] = 4364967;
+		let map[14] = 14140;
+		let map[15] = 39423;
+		let map[16] = 3355494;
+		let map[17] = 8388608;
+		let map[18] = 16737996;
+		let map[19] = 10027110;
+		let map[20] = 10053324;
+		let map[21] = 2236962;
+		let map[22] = 13421823;
+		let map[23] = 10066431;
+		let map[24] = 6710988;
+		let map[25] = 3407769;
+		let map[26] = 51;
+		let map[27] = 102;
+		let map[28] = 153;
+		let map[29] = 204;
+		let map[30] = 13056;
+		let map[31] = 13107;
+		let map[32] = 13158;
+		let map[33] = 13209;
+		let map[34] = 13260;
+		let map[35] = 13311;
+		let map[36] = 26112;
+		let map[37] = 26163;
+		let map[38] = 26214;
+		let map[39] = 26265;
+		let map[40] = 26316;
+		let map[41] = 26367;
+		let map[42] = 39168;
+		let map[43] = 39219;
+		let map[44] = 39270;
+		let map[45] = 39321;
+		let map[46] = 39372;
+		let map[47] = 52224;
+		let map[48] = 52275;
+		let map[49] = 52326;
+		let map[50] = 52377;
+		let map[51] = 52428;
+		let map[52] = 52479;
+		let map[53] = 65331;
+		let map[54] = 65382;
+		let map[55] = 65433;
+		let map[56] = 65484;
+		let map[57] = 3342336;
+		let map[58] = 3342387;
+		let map[59] = 3342438;
+		let map[60] = 3342489;
+		let map[61] = 3342540;
+		let map[62] = 3342591;
+		let map[63] = 3355392;
+		let map[64] = 3355443;
+		let map[65] = 3355545;
+		let map[66] = 3355596;
+		let map[67] = 3355647;
+		let map[68] = 3368448;
+		let map[69] = 3368499;
+		let map[70] = 3368550;
+		let map[71] = 3368601;
+		let map[72] = 3368652;
+		let map[73] = 3368703;
+		let map[74] = 3381504;
+		let map[75] = 3381555;
+		let map[76] = 3381606;
+		let map[77] = 3381657;
+		let map[78] = 3381708;
+		let map[79] = 3381759;
+		let map[80] = 3394560;
+		let map[81] = 3394611;
+		let map[82] = 3394662;
+		let map[83] = 3394713;
+		let map[84] = 3394764;
+		let map[85] = 3394815;
+		let map[86] = 3407616;
+		let map[87] = 3407667;
+		let map[88] = 3407718;
+		let map[89] = 3407820;
+		let map[90] = 3407871;
+		let map[91] = 6684672;
+		let map[92] = 6684723;
+		let map[93] = 6684774;
+		let map[94] = 6684825;
+		let map[95] = 6684876;
+		let map[96] = 6684927;
+		let map[97] = 6697728;
+		let map[98] = 6697779;
+		let map[99] = 6697830;
+		let map[100] = 6697881;
+		let map[101] = 6697932;
+		let map[102] = 6697983;
+		let map[103] = 6710784;
+		let map[104] = 6710835;
+		let map[105] = 6710886;
+		let map[106] = 6710937;
+		let map[107] = 6711039;
+		let map[108] = 6723840;
+		let map[109] = 6723891;
+		let map[110] = 6723942;
+		let map[111] = 6723993;
+		let map[112] = 6724044;
+		let map[113] = 6724095;
+		let map[114] = 6736896;
+		let map[115] = 6736947;
+		let map[116] = 6736998;
+		let map[117] = 6737049;
+		let map[118] = 6737100;
+		let map[119] = 6737151;
+		let map[120] = 6749952;
+		let map[121] = 6750003;
+		let map[122] = 6750054;
+		let map[123] = 6750105;
+		let map[124] = 6750156;
+		let map[125] = 6750207;
+		let map[126] = 10027008;
+		let map[127] = 10027059;
+		let map[128] = 10027161;
+		let map[129] = 10027212;
+		let map[130] = 10027263;
+		let map[131] = 10040064;
+		let map[132] = 10040115;
+		let map[133] = 10040166;
+		let map[134] = 10040217;
+		let map[135] = 10040268;
+		let map[136] = 10040319;
+		let map[137] = 10053120;
+		let map[138] = 10053171;
+		let map[139] = 10053222;
+		let map[140] = 10053273;
+		let map[141] = 10053375;
+		let map[142] = 10066176;
+		let map[143] = 10066227;
+		let map[144] = 10066278;
+		let map[145] = 10066329;
+		let map[146] = 10066380;
+		let map[147] = 10079232;
+		let map[148] = 10079283;
+		let map[149] = 10079334;
+		let map[150] = 10079385;
+		let map[151] = 10079436;
+		let map[152] = 10079487;
+		let map[153] = 10092288;
+		let map[154] = 10092339;
+		let map[155] = 10092390;
+		let map[156] = 10092441;
+		let map[157] = 10092492;
+		let map[158] = 10092543;
+		let map[159] = 13369344;
+		let map[160] = 13369395;
+		let map[161] = 13369446;
+		let map[162] = 13369497;
+		let map[163] = 13369548;
+		let map[164] = 13369599;
+		let map[165] = 13382400;
+		let map[166] = 13382451;
+		let map[167] = 13382502;
+		let map[168] = 13382553;
+		let map[169] = 13382604;
+		let map[170] = 13382655;
+		let map[171] = 13395456;
+		let map[172] = 13395507;
+		let map[173] = 13395558;
+		let map[174] = 13395609;
+		let map[175] = 13395660;
+		let map[176] = 13395711;
+		let map[177] = 13408512;
+		let map[178] = 13408563;
+		let map[179] = 13408665;
+		let map[180] = 13408716;
+		let map[181] = 13408767;
+		let map[182] = 13421568;
+		let map[183] = 13421619;
+		let map[184] = 13421670;
+		let map[185] = 13421721;
+		let map[186] = 13421772;
+		let map[187] = 13434624;
+		let map[188] = 13434675;
+		let map[189] = 13434726;
+		let map[190] = 13434777;
+		let map[191] = 13434828;
+		let map[192] = 13434879;
+		let map[193] = 16711731;
+		let map[194] = 16711782;
+		let map[195] = 16711833;
+		let map[196] = 16711884;
+		let map[197] = 16724736;
+		let map[198] = 16724787;
+		let map[199] = 16724838;
+		let map[200] = 16724889;
+		let map[201] = 16724940;
+		let map[202] = 16724991;
+		let map[203] = 16737792;
+		let map[204] = 16737894;
+		let map[205] = 16737945;
+		let map[206] = 16738047;
+		let map[207] = 16750848;
+		let map[208] = 16750899;
+		let map[209] = 16750950;
+		let map[210] = 16751001;
+		let map[211] = 16751052;
+		let map[212] = 16751103;
+		let map[213] = 16763904;
+		let map[214] = 16763955;
+		let map[215] = 16764006;
+		let map[216] = 16764057;
+		let map[217] = 16764108;
+		let map[218] = 16764159;
+		let map[219] = 16777011;
+		let map[220] = 16777062;
+		let map[221] = 16777113;
+		let map[222] = 16777164;
+		let map[223] = 13408614;
+		let map[224] = 16737843;
+		let map[225] = 4364967;
+		let map[226] = 14140;
+		let map[227] = 39423;
+		let map[228] = 3355494;
+		let map[229] = 8388608;
+		let map[230] = 16737996;
+		let map[231] = 10027110;
+		let map[232] = 10053324;
+		let map[233] = 2236962;
+		let map[234] = 13421823;
+		let map[235] = 10066431;
+		let map[236] = 6710988;
+		let map[237] = 3407769;
+		let map[238] = 16777164;
+		let map[239] = 13408614;
+		let map[240] = 16737843;
+		let map[241] = 4364967;
+		let map[242] = 14140;
+		let map[243] = 39423;
+		let map[244] = 3355494;
+		let map[245] = 8388608;
+		let map[246] = 16776176;
+		let map[247] = 10526884;
+		let map[248] = 8421504;
+		let map[249] = 16711680;
+		let map[250] = 65280;
+		let map[251] = 16776960;
+		let map[252] = 255;
+		let map[253] = 16711935;
+		let map[254] = 65535;
+		let map[255] = 8388608;
+		return;
+	}
+
+	method boolean writeFile(String file, Buffer data, int w, int h) {
+		if ((w < 1) | (h < 1)) {
+			return false;
+		}
+		let fp = File.new(file, true);
+		do start(w, h, 0, 2);
+		do frame_(data, 4, false);
+		do end();	
+		do fp.dispose();
+		let fp = null;
+		return true;
+	}
+}
+

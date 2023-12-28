@@ -1,0 +1,155 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Buffer {
+	field Array buffer;
+	field int size;
+	field int pos;
+	field Callback dispCb;
+
+	constructor Buffer new(int initial, Callback disposeCb) {
+		var int i;
+		let dispCb = disposeCb;
+		let buffer = Array.new(initial);
+		let size = initial;
+		let pos = 0;
+		let i = 0;
+		while (i < initial) {
+			let buffer[i] = 0;
+			let i = i + 1;
+		}
+	//	do Output.printInt(size);
+		return this;
+	}
+
+	function Buffer newString(int initial) {	
+		var Callback cb;
+		let cb = CallbackStringDispose.new();
+		return Buffer.new(initial, cb);
+	}
+	
+	method void dispose() {
+		var String s;
+		var int i;
+		let i = 0;
+		if (dispCb) {
+			while (i < pos) {
+				let s = buffer[i];
+				if (s) {
+					do dispCb.invoke(s, null);
+				}
+				let i = i + 1;
+			}
+			do dispCb.dispose();
+		}
+	
+		do buffer.dispose();
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method Array getAt(int p) {
+		return buffer[p];
+	}
+
+	method Array setAt(int p, int data) {
+		var Array r;
+		do checkSize(p);
+		let r = buffer[p];
+		let buffer[p] = data;
+		return r;
+	}
+
+	method int append(Array data) {
+		var int i;
+		let i = pos;
+		do checkSize(pos);
+		let buffer[pos] = data;
+		let pos = pos + 1;
+		return i;
+	}
+
+	method int insertSortedStr(String q) {
+		var int i;
+		let i = append(q); // FIXME qsort
+		return i;
+	}
+
+	method String remove(String q) {
+		var String s;
+		var int i;
+		var int j;
+		let i = 0;
+		let j = 0;
+		while (i < pos) {
+			let s = buffer[i];
+			if (s = q) {
+				let j = j - 1;
+			}
+			let buffer[i] = buffer[j];
+			let i = i + 1;
+			let j = j + 1;
+		}
+		let pos = i;
+		if (i = j) {
+			return null;
+		}
+		return q;
+	}
+
+
+	method int indexOfStr(String q) {
+		var String s;
+		var int i;
+		let i = 0;
+		while (i < pos) { // FIXME bsearch
+			let s = buffer[i];
+			if (s.compare(q) = 0) {
+				return i;
+			}
+			let i = i + 1;
+		}
+		return -1;
+	}
+
+	method void checkSize(int idx) {
+		var Array b;
+		var int i;
+		var int ns;
+		if (idx > (size - 1)) {
+			let ns = size + idx + 32;
+			let b = Array.new(ns);
+			let i = 0;
+			while (i < pos) {
+				let b[i] = buffer[i];
+				let i = i + 1;
+			}
+			while (i < ns) {
+				let b[i] = 0;
+				let i = i + 1;
+			}
+			let size = ns;
+			do buffer.dispose();
+			let buffer = b;
+		}
+		return;
+	}		
+
+	method Array getArray() {
+//		do Output.printString(" OOOO ");
+//		do Output.printInt(buffer);
+		return buffer;
+	}
+
+	method int getSize() {
+		//do Output.printInt(size);
+		return pos;
+	}
+}

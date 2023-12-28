@@ -1,0 +1,143 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Xml {
+	field XmlNode root;
+	field XmlNode current;
+	field String esca;
+	field Buffer strings; // FIXME: Hash
+
+	constructor Xml new() {
+		let strings = Buffer.newString(1024);
+		let esca = String.new(32);
+		let root = XmlNode.new(this, null,"%root%",false);
+		let current = root;
+		return this;
+	}
+
+	method void dispose() {
+		do root.dispose();
+		do esca.dispose();
+		do strings.dispose();
+		do Memory.deAlloc(this);
+		return;
+	}
+	
+	method void clear() {
+		do root.clear();
+		let current = root;
+		return;
+	}
+
+	method String getStringNoCreate(String s) {
+		var int i;
+		let i = strings.indexOfStr(s);
+		if (i > -1) {
+			return strings.getAt(i);
+		}
+		return null;
+	}
+
+
+	method String getString(String s) {
+		var int i;
+		let i = strings.indexOfStr(s);
+		if (i > -1) {
+			return strings.getAt(i);
+		}
+		let s = s.copy();
+		do strings.insertSortedStr(s);
+		return s;
+	}
+	method void addElement(String tag) {
+		let current = current.addElement(this, tag);
+		return;
+	}
+
+	method void addAttribute(String name, String value) {
+		do current.addAttribute(this, name, value);
+		return;
+	}
+
+	method void addContent(String txt) {
+		do current.addContent(this, txt);
+		return;
+	}
+
+	method void closeElement(String tag) {
+		let current = current.closeElement(this, tag);
+		return;
+	}
+
+	method void closeCurrent() {
+		let current = current.closeElement(this, current.getTag());
+		return;
+	}
+
+	method XmlNode getCurrent() {
+		return current;	
+	}
+
+	method XmlNode disposeCurrent() {
+		var XmlNode o;
+		let o = current;
+		let current = current.getParent();
+		if (current) {
+			let o = current.removeElement(this, o);
+			if (o) {
+				do o.dispose();
+			}
+		}
+		return; 
+	}
+
+	method void dump(File f) {
+		do root.dump(this, f, 0);
+		return;
+	}
+
+	
+	method String escape(String o) {
+		var int i, l;
+		var int c;
+		var String s;
+		
+		let s = esca;
+		do  s.setCharAt(0, 0);
+		let l = o.length();
+		let i = 0;
+		while (i < l) {
+			let c = o.charAt(i);
+			if (c = 60) { // <
+				let s = s.appendString("&lt;");
+			} else { if (c = 38) { // &
+				let s = s.appendString("&amp;");
+			} else { if (c = 34) { // "
+				let s = s.appendString("&quot;");
+			} else { if (c = 62) { // >
+				let s = s.appendString("&gt;");
+			} else { if (c = 39) { // ' 
+				let s = s.appendString("&apos;");
+			} else {
+				let s = s.appendChar(c);
+			}}}}}
+			let i = i + 1;
+		}
+		let esca = s;
+		return s;
+	}
+
+/*
+Comments begin with <!-- and end with -->. 
+he delimiters <![CDATA[ and ]]> are classified as markup, while the text between them is classified as content.
+*/
+
+}
+

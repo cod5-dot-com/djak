@@ -1,0 +1,22 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class CallbackStringDispose {
+	field int callback;
+
+	method int callback(String a, int b) {
+		do a.dispose();
+		return 0;
+	}
+	
+	constructor CallbackStringDispose new() {
+		return this;
+	}
+} 

@@ -1,0 +1,45 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class UnitScreen {
+	function boolean isOk(int l) {
+		var int i;
+		var boolean ok;
+		var String s;
+		let ok = false;
+		do Screen.clearScreen();
+		do Screen.setColor(true);
+		//do Screen.setColor(false);
+		//do Screen.drawCircle(20, 20, 5);
+		do Screen.drawRectangle(40, 40, 50, 60);
+		let i = 32;
+		let s = String.new(256);
+		while (i < 34) {
+			let s = s.appendChar(i);
+			do Output.moveCursor(0,0);
+		do Screen.clearScreen();
+			//do Output.printString(s);
+		//do Keyboard.readInt("!");
+			do Sys.wait(10);
+			do s.setCharAt(0, 0);
+			let i = i + 1;
+		}
+		do Screen.clearScreen();
+		do s.dispose();
+		do Sys.wait(10);
+		do Sys.wait(10);
+		do Sys.wait(10);
+		do Sys.wait(1000);
+		do Unit.log(l + 1, "Screen.drawCircle...", ok);
+		return Memory.checkEmpty();
+	}
+	
+}
+

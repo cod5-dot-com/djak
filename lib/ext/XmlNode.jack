@@ -1,0 +1,248 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class XmlNode {
+	field String tag;
+	field Buffer att_values;
+	field Buffer att_names;
+	field Buffer elements;
+	field XmlNode parent;
+	field boolean is_content_;
+
+	constructor XmlNode new(Xml x, XmlNode parent_, 
+		String tag_, boolean is_txt) 
+	{
+		if (is_txt) {
+			let tag = tag_.copy();
+		} else {
+			let tag = x.getString(tag_);
+		//	do Output.printString("TAG=");
+		//	do Output.printString(tag_);
+		//	do Output.printInt(tag);
+		//	do Output.println();
+		}
+		let parent = parent_;
+		let is_content_ = is_txt;
+		let att_values = null;
+		let att_names = null;
+		let elements = null;
+		return this;
+	}
+
+	method void dispose() {
+		var XmlNode x;
+		let x = this;
+		do x.clear();
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method void clear() {
+		if (att_values) {
+			do att_values.dispose();
+			do att_names.dispose();
+			let att_values = null;
+			let att_names = null;
+		}
+
+		if (is_content_) {
+			if (tag) {
+				do tag.dispose();
+				let tag = null;
+			}
+		}
+
+		if (elements) {
+			do elements.dispose();
+			let elements = null;
+		}
+		return;
+	}
+
+	method XmlNode closeElement(Xml x, String tag_) {
+		var XmlNode e;
+		var XmlNode p;
+		var String s;
+		var String t;
+		let s = x.getString(tag_);
+		let e = this;
+		let p = e.getParent();
+		while ((p = null) = 0) {
+			let t = e.getTag();
+			if (t = s) {
+				return p;
+			}
+			let e = p;
+			let p = p.getParent();
+		}
+		return e;
+	}
+
+	method XmlNode removeElement(Xml x, XmlNode e) {
+		if (elements = null) {
+			return null;
+		}
+		do elements.remove(e);	
+		return e;
+	}
+
+	method XmlNode addElement(Xml x, String tag_) {
+		var XmlNode e;
+		var Callback cb;
+		let e = XmlNode.new(x, this, tag_, false);
+		if (elements = null) {
+			let cb = CallbackXmlNodeDispose.new();
+			let elements = Buffer.new(1, cb);
+		}
+		//do Output.printString(tag_);
+		//do Output.printInt(e);
+		//do Output.printString("jjjjj");
+		do elements.append(e);	
+		return e;
+	}
+
+	method void addAttribute(Xml x, String name, String value) {
+		var int i;
+		var String s;
+
+		if (att_values = null) {
+			let att_values = Buffer.newString(1);
+			let att_names = Buffer.new(1, null);
+		}
+		let i = att_names.indexOfStr(name);
+		let s = value.copy();
+		if (i > -1) {
+			let s = att_values.setAt(i, s);
+			do s.dispose();
+		} else {
+			do att_values.append(s);
+			let s = x.getString(name);
+			do att_names.append(s);
+		}
+		return;
+	}
+
+	method void addContent(Xml x, String txt) {
+		var XmlNode e;
+		var Callback cb;
+
+		let e = XmlNode.new(x, this, txt, true);
+		if (elements = null) {
+			let cb = CallbackXmlNodeDispose.new();
+			let elements = Buffer.new(1, cb);
+		}
+		do elements.append(e);	
+		return;
+	}
+
+	method boolean isContent() {
+		return is_content_;
+	}
+	
+	method Buffer getElements() {
+		return elements;
+	}
+
+	method Buffer getAttributesNames() {
+		return att_names;
+	}
+
+	method Buffer getAttributesValues() {
+		return att_values;
+	}
+
+	method  XmlNode getParent() {
+		return parent;
+	}
+
+	method  String getTag() {
+		return tag;
+	}
+	
+	
+	method void dump(Xml x, File f, int depth) {
+		var int d, i;
+		var String s;
+		var XmlNode e;
+		if (is_content_) {
+			let s = x.escape(tag);
+			do f.writeString(s);
+			return; 
+
+		}
+
+		if (depth) {
+			let d = depth;
+			//while (d) {
+			//	let d = d - 1;
+			//	do f.writeUtf8(32);
+			//}
+			do f.writeUtf8(60); // <
+			do f.writeString(tag); 
+
+			let d = 0;
+			if (att_names) {
+				let d = att_names.getSize();
+			}
+			let i = 0;
+			while (i < d) {
+				do f.writeUtf8(32); // space
+				let s = att_names.getAt(i);
+				if (s) {
+					do f.writeString(s); 
+				}
+				let s = att_values.getAt(i);
+				if (s) {
+					do f.writeUtf8(61); // =
+					do f.writeUtf8(34); // "
+					let s = x.escape(s);
+					do f.writeString(s); 
+					do f.writeUtf8(34); // "
+				}
+
+				let i = i + 1;
+			}
+			if (elements = null) {
+				do f.writeUtf8(47); // /
+			}		
+			do f.writeUtf8(62); // >
+			
+		}
+		if (elements) {
+			let d = elements.getSize();
+			let i = 0;
+			while (i < d) {
+				let e = elements.getAt(i);
+				if (e) {
+					do e.dump(x, f, (depth + 1));
+				}
+				let i = i + 1;
+			}
+		}
+		
+		if ((depth>0) & (false=(elements=null))) {
+			let d = depth;
+			//while (d > 0) {
+			//	let d = d - 1;
+			//	do f.writeUtf8(32);
+			//}
+			do f.writeUtf8(60); // <
+			do f.writeUtf8(47); // /
+			do f.writeString(tag); 
+			do f.writeUtf8(62); // >
+			//do f.writeUtf8(10); // new line 
+
+		}
+		return;
+	}
+
+
+}
+

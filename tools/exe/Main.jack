@@ -1,0 +1,200 @@
+/*
+ *                         jack test code 
+ *
+ *                      1 april MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+class Main 
+{
+
+	function void main() 
+	{
+		/* main */
+		var int z;
+		var Array y;
+		var String s;
+		var boolean b;
+		var File f;
+		var Gif g;
+		var Buffer d;
+		var int q;
+		var GifWriter w;
+/*
+		let z = 66;
+		let y = Array.new(10);
+		let s = String.new(80);
+		do s.appendChar(67);
+		do s.appendChar(68);
+		do s.appendChar(269);
+		do s.appendChar(70);
+		let y[9] = 65;
+		//do Output.moveCursor(20, 5);
+		do Output.printString("Hello world\n");
+		do Output.printString(s);
+		do Output.println(); // new line
+		do Output.printChar(y[9]); 
+		do Output.printInt(65 * 10 + (-2 - 1)); 
+		do Output.backSpace(); 
+		do Output.printString(" "); 
+		do Output.printInt(s.length()); 
+		do Output.printString(" *  "); 
+		do Output.printChar(String.newLine()); 
+		do s.setCharAt(13, 65);
+		do Output.printString("  "); 
+		do Output.printString(s); 
+		do Output.printString("  "); 
+		do Output.printString(s); 
+		do Output.printInt(s.charAt(1)); 
+		do s.setInt(89);
+		do Output.printString(s); 
+		do Output.printInt(s.intValue()); 
+		do s.dispose();	
+		do Output.printString("  "); 
+		while (s.length() > 0) {
+			do s.eraseLastChar();
+		}
+		do s.appendChar(49);
+		let b = true;
+		if (1 + 2 * 3 > 4 & 5 < 6 & b) {
+			do Output.printInt(s.intValue()); 
+		} else {
+			do Output.printString(s); 
+		}
+	
+		let z = 100;
+		while (z > 0) {
+			let z = z -1;
+			let s = String.new(256);
+			// do s.dispose();
+		}
+		do Output.println(); // new line
+		do Sys.wait(900);
+		do Output.println(); // new line
+		do Screen.clearScreen();
+		while ((z = 0) | (~(z = 65))) {
+		//while (z < 128) {
+			//do Sys.wait(200);
+			let z = Keyboard.keyPressed();
+			if (z > 0) {
+				do Output.printInt(z); 
+				do Output.println(); // new line
+			}
+			let z = 65;
+		}
+		let f = File.new("test.txt", true);
+		//do f.writeUtf8(1073741824);
+		do Output.println(); // new line
+			do Output.printString("OK");
+		do f.writeUtf8(233);
+		do f.writeUtf8(11918);
+		do f.writeUtf8(20479);
+		do f.writeUtf8(4294967295); // 2^32-1
+		do f.writeUtf8(4294967296); // 2^32
+		//do f.writeUtf8(-2); 
+		do f.dispose();
+		do Output.println(); // new line
+		let f = File.new("test.txt", false);
+		do Output.printInt(f.readUtf8());
+		do Output.println(); // new line
+		do Output.printInt(f.readUtf8());
+		do Output.println(); // new line
+		do Output.printInt(f.readUtf8());
+		do Output.println(); // new line
+		do Output.printInt(f.readUtf8());
+		do Output.println(); // new line
+		do Output.printInt(f.readUtf8());
+		do Output.println(); // new line
+		do f.dispose();
+			do Output.printString(" GOOD ");
+		let f = File.new("test.txt", true);
+		do f.writeInt32(65536 + 2);
+		do f.dispose();
+		let f = File.new("test.txt", false);
+		do Output.printInt(f.readInt32());
+		do Output.println(); // new line
+		do f.dispose();
+*/
+	/*	let g = Gif.new();
+		let d = g.readFile("screen.gif");
+		if (d = null) {
+			do g.dispose();
+			let g = Gif.new();
+			do Output.printString(" NULL ");
+			let d = Buffer.new(0, null);
+		}
+		do Output.printString("S = ");
+		do Output.printInt(d.getSize());
+		do Output.printString("W = ");
+		do Output.printInt(g.getW());
+		do Output.printString("H = ");
+		do Output.printInt(g.getH());
+		do Output.println(); // new line
+		
+		let w = GifWriter.new();
+		do w.writeFile("test2.gif", d, g.getW(), g.getH());
+		do w.dispose();
+ */
+		let f = null;
+		let d = null;
+		let d = Buffer.new(1, null);
+		let f = File.new("test.txt", true);
+		let z = d.getSize();
+		while (z > 0) {
+			let z = z -1;
+			let q = d.getAt(z);
+			if (q = 0) {
+				do f.writeByte(66);
+			} else {
+				do f.writeByte(65);
+			}
+			//do Output.printInt(Math2.rem(z, g.getW()));
+			//do Output.println(); // new line
+			if ((g.getW() > 0) & (Math.rem(z, g.getW())) = 0) {
+				do f.writeByte(10);
+			}
+		}
+
+		do Output.printInt(Math.xor(3, 6));
+		if (d) {
+			do f.dispose();
+			do d.dispose();
+			let d = null;
+		}
+
+			do Output.printString("TTT");
+		let f = null;
+		let f = File.new(".", false);
+			do Output.printString("XYX");
+		
+		if (f) {
+			let d = null;
+			do Output.printString("AAA");
+			do Memory.alloc(256);
+			do Memory.alloc(256);
+			let d = f.list();
+			do Output.printString("GOOOOOOO");
+			do f.dispose();
+			let f = File.new("test.txt", true);
+		//	let z = f.delete();
+		//	let z = f.mkdir();
+		//	let z = f.delete();
+		}			
+//		let d = Sys2.args();
+		if (d) {
+			let z = 0;
+			while (z < d.getSize()) {
+				let s = d.getAt(z);
+				do Output.printString(s);
+				do Output.println(); // new line
+				let z = z + 1;
+			}
+		}
+		
+		do Sys.error(-1);
+		return;
+	}
+}
+

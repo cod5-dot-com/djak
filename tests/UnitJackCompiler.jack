@@ -1,0 +1,22 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class UnitJackCompiler {
+	function boolean isOk(int l) {
+		var JackCompiler a;
+		let l = l + 1;
+		let a = JackCompiler.new(false);
+		do a.compile("./tests/Main.jack");
+		do a.dispose();
+		do Unit.log(l, "JackCompiler...", true);
+		return Memory.checkEmpty();
+	}
+}
+

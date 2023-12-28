@@ -1,0 +1,255 @@
+/*
+ *                         jack standard library 
+ *
+ *                      2 april MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+class Memory {
+	static int arena, asize;
+	static int freep;
+	static Array mem;
+	static boolean keyread;
+
+	function void init() {
+		var int i;
+		let mem = 0;
+		let keyread = false;
+//#c #ifndef JACK_HACK
+//#c 	return 0;
+//#c #endif
+		let i = 0;
+		while (i < 24576) {
+			do Memory.poke(i, 0);
+			let i = i + 1;
+		}
+		let arena = Math.abs(mem[0]);
+		let arena = 0;
+
+		let asize = 16384;
+		let arena[0] = asize;
+		let freep = arena;
+		return;
+	}
+
+	function void deInit() {
+		return;
+	}
+	
+	function int peek(int addr) {
+		if (addr < 0) {
+			do Sys.error(27);
+		}
+		if (addr > 24576) {
+			do Sys.error(28);
+		}
+		if (addr = 24576) {
+			let keyread = true;
+			let addr = addr;
+		} 
+//#c 	if (addr == 24576) {
+//#c 		Screen__processEvents(0);
+//#c	}
+//#c 	return Memory__memory[addr];
+		return mem[addr];
+	}
+
+	function void poke(int addr, int value) {
+		if (addr < 0) {
+			do Sys.error(29);
+		}
+		if (addr > 24576) {
+			do Sys.error(30);
+		}
+		if ((addr > 16383) & (addr < 24576)) {
+			if (keyread) {
+ 				// clear keyboard when drawing
+				let mem[24576] = 0;
+				let keyread = false;
+			}
+			do Screen.refresh();
+		} 
+//#c 	return Memory__memory[addr] = value;
+		let mem[addr] = value;
+		return;
+	}
+
+	function void defrag() {
+		var Array p, q, end;
+		let end = arena + asize;
+		let p = arena;
+		while (p < end) {
+			if (p[0] > 0) {
+				let q = p + p[0];
+				while ((q < end) & (q[0] > 0)) {
+					let p[0] = q - p;
+					let q = q + q[0];	
+				}
+			} else { if (p[0] = 0) {
+				return;
+			}}
+			let p = p + Math.abs(p[0]);
+		} 
+		return;
+	}
+
+	function boolean checkEmpty() {
+		var boolean ok;
+		var Array p, end;	
+//#c 	return -1;
+		let end = arena + asize;
+		let p = arena;
+		let ok = true;
+		while (p < end) {
+			if (p[0] < 0) {
+				do Output.printString(
+					"Alloc arena is not free! p=");
+				do Output.printInt(p);
+				do Output.printString(" p[0]=");
+				do Output.printInt(p[0]);
+				do Output.println();
+				let ok = false;
+			} else { if (p[0] = 0) {
+				do Output.printString(
+					"Unespeced p0 p=");
+				do Output.printInt(p);
+				do Output.println();
+				return false;
+			}}
+			let p = p + Math.abs(p[0]);
+		}
+		return ok;
+	}
+
+	function Array alloc(int size) {
+		var Array p, end;
+		var int k, tries, i,j;
+		var boolean doit;
+//#c #ifndef JACK_HACK
+//#c 	p = (var) malloc(sizeof(var)* (size+1));
+//#c 	((var*)p)[0] = -(size+1);
+//#c 	return ((var)(((var*)p+1))) / sizeof(var);
+//#c #endif
+		let tries = 0;
+		let i = 0;
+		let j = 0;
+		if (size < 1) {
+			do Output.printString("Size too small in alloc!");
+			do Output.printInt(size);
+			do Output.println();
+			do Sys.error(24);
+			return null;
+		}
+//#py 	global __memory	
+		while (tries < 3) {
+			let end = arena + asize;
+			let p = freep;
+			let doit = true;
+			while (doit | ((p = freep) = false)) {
+				let doit = false;
+				if (p[0] > size) {
+					if ((size + 1) = p[0]) {
+						let p[0] =-p[0];
+					} else {
+						let k = p[0];
+						let p[0] = -(size+1);
+						let p[size+1] = (k - size) - 1;
+					}
+					let freep = p;
+					//do Memory.log("Alloc=", p + 1, size+1);
+					return p + 1;
+				}		
+				let p = p + Math.abs(p[0]);
+				if (p = end) {
+					let p = arena;
+				}
+				if ((p < arena) | (p > (end-1)) | (p[0] = 0)) {
+					do Output.printString(
+						"Error in alloc!");
+					do Output.printString( " p=");
+					do Output.printInt(p);
+					do Output.printString( " arena=");
+					do Output.printInt(arena);
+					do Output.printString( " end=");
+					do Output.printInt(end);
+					do Output.printString( " p[0]=");
+					do Output.printInt(p[0]);
+					do Output.println();
+					do Sys.error(23);
+				}		
+			}
+			if (tries = 0) {
+				do Memory.defrag();
+			} else {
+				let k = asize;
+				let asize = asize + (size * 8) + 64;
+//#py 		#	__m = array.array('l', (Memory__arena + Memory__asize)*[0])
+				let i = 0;
+				let j = arena + k;
+				while (i < j) {
+//#py 		#		__m[i] = __memory[i]
+					let i = i + 1;		
+				}
+//#py 		#	__memory = __m
+				let end[0] = asize - k;
+				let arena[asize - 1] = 0;
+			}
+			let tries = tries + 1;
+		}
+		do Output.printString( "Error in alloc!");
+		do Output.println();
+		do Sys.error(26);
+		return 0;
+	}
+
+	function void log(String msg, int p, int q) {
+		return;
+		do Output.printString(msg);
+		do Output.printInt(p);
+		do Output.printString(" p[0]=");
+		do Output.printInt(q);
+		do Output.printString(" arena=");
+		do Output.printInt(arena);
+		do Output.printString(" asize=");
+		do Output.printInt(asize);
+//#py 	print (" " + inspect.stack()[4][3] + " " + inspect.stack()[3][3] + " " + inspect.stack()[2][3])
+	}
+
+	function void deAlloc(Array p) {
+		var Array pi;
+//#c #ifndef JACK_HACK
+//#c 	free(((var*)(p* sizeof(var)))-1);
+//#c 	return 0;
+//#c #endif
+	//	do Memory.log("deAlloc=", p, p[-1]);
+		if (p < arena) {
+			do Output.printString("deAlloc error: arena=");
+			do Output.printInt(arena);
+			do Output.printString(" p=");
+			do Output.printInt(p);
+			do Output.println();
+			do Sys.error(25);
+			return;
+		}
+		let pi = p;
+		if ((pi < arena) | ((arena + asize) < pi) 
+			| (mem[pi-1] > (-1))) 
+		{
+			do Output.println();
+			do Output.printInt(arena);
+			do Output.printString("Error in deAlloc!");
+			do Output.printInt(pi);
+			do Output.printString(" asize=");
+			do Output.printInt(asize);
+			do Output.println();
+			//do Sys.error(22);
+			return;
+		}
+		let pi = pi - 1;
+		//let pi[0] = -(pi[0]);
+		do Memory.poke(pi, -Memory.peek(pi)); 
+		return;
+	}
+}

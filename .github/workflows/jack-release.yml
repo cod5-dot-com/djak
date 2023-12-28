@@ -1,0 +1,32 @@
+name: jack-release
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  build-it:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/create-release@latest
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            New release.
+          draft: false
+          prerelease: false
+      - run: sudo apt install libglu1-mesa-dev mesa-common-dev libx11-dev
+      - run: make
+      - run: make release
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./jack-linux.tar.gz
+          asset_name: jack-linux.tar.gz
+          asset_content_type: application/tar+gzip

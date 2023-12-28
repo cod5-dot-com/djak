@@ -1,0 +1,216 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Hash {
+	field int size_;
+	field int mask;
+	field Array table;
+	field Callback cb;
+
+	constructor Hash new(int size, Callback disposeCb) {
+		var int i;
+		let size_ = Math.shiftLeft(1, Math.log2(size));
+		let mask = size_ - 1;
+		let table = Array.new(size_);
+		let i = 0;
+		while (i < size_) {
+			let table[i] = null;
+			let i = i + 1;
+		}
+		let cb = disposeCb;
+		return this;
+	}
+
+	method void dispose() {
+		var String s;
+		var Array n, next;
+		var int i;
+		let i = 0;
+		while (i < size_) {
+			let n = table[i];
+			while (n) {
+				let next = n[0];
+				if (cb) {
+					if (n[3]) {
+						do cb.invoke(n[3], null);
+					}	
+				}
+				let s = n[2];
+				do s.dispose();	
+				do n.dispose();
+				let n = next;
+			}
+			let i = i + 1;
+		}
+		if (cb) {
+			do cb.dispose();
+		}
+		do table.dispose();
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method void stats() {
+		var String s;
+		var Array n, next;
+		var int i, max, depth;
+		let i = 0;
+		let max = 0;
+		while (i < size_) {
+			let n = table[i];
+			let depth = 0;
+			while (false=(n = null)) {
+				let depth = depth + 1;
+				let next = n[0];
+				let s = n[2];
+				do Output.printString("@");
+				do Output.printInt(i);
+				do Output.printString(" ");
+				do Output.printString(s);
+				do Output.printInt(depth);
+				do Output.println();
+				let n = next;
+			}
+			if (depth > max) {
+				let max = depth;
+			}
+			let i = i + 1;
+		}
+		do Output.printString("HASH depth=");
+		do Output.printInt(max);
+		do Output.printString(" size=");
+		do Output.printInt(size_);
+		do Output.printString(";");
+		do Output.println();
+		return;
+	}
+
+
+	method int hash(String k) {
+		var int h, l, i, t;
+		let i = 1;
+		let h = 0;
+		let l = k.length();
+		if (l > 0) {
+			let h = k.charAt(0);
+		}
+		while (i < l) {
+			let i = i + 1;
+			let t = k.charAt(i);
+			let h = Math.xor(Math.shiftLeft(h, 3), t);
+		}
+		return h;
+	}
+	
+	method void add(String k, int val) {
+		var int p, hhh, cmp;
+		var Array a, n, r, prev;
+		let hhh = hash(k);
+		let p = hhh & mask;
+		let a = table[p];
+		let r = null;
+		if (a = null) {
+			let r = Array.new(4);
+			let r[0] = null;
+			let table[p] = r;
+		} else {
+			let n = a;
+			let prev = null;
+			while ((r = null) & ((n=null)=false)) {
+				if (n[1] = hhh) {
+					let cmp = k.compare(n[2]);
+					if (cmp > 0) {
+						let r = Array.new(4);
+						let r[0] = n;
+						if (prev = null) {
+							let table[p] = r;
+						} else {
+							let prev[0] = r;
+						}
+					} else {if (cmp = 0) {
+						if (cb) {
+							if (n[3]) {
+								do cb.invoke(
+									n[3],
+								 	null);
+							}
+						}
+						let n[3] = val;
+						return;
+					}}
+				} else { if (hhh > n[1]) {
+					let r = Array.new(4);
+					let r[0] = n;
+					if (prev = null) {
+						let table[p] = r;
+					} else {
+						let prev[0] = r;
+					}
+				}}
+				let prev = n;
+				if ((r = null) & (n[0] = null)) {
+					let r = Array.new(4);
+					let r[0] = null;
+					let n[0] = r;
+					let n = null;
+				} else {
+					let n = n[0];
+				}
+			}
+		}
+		if (r) {
+			let r[1] = hhh;
+			let r[2] = k.copy();
+			let r[3] = val; 
+		}
+		return;
+	} 
+
+	method int get(String k) {
+		var int p, h, cmp;
+		var Array a, n;
+
+		let h = hash(k);
+		let p = h & mask;
+		let a = table+p;
+		let a = table[p];
+
+/*
+		do Output.printString(k);
+		do Output.printInt(p);
+		do Output.printString("GOO");
+		do Output.println();
+*/
+		if (a = null) {
+			return -1;
+		} else {
+			let n = a;
+			while (false = (n = null)) {
+				if (n[1] = h) {
+					let cmp = k.compare(n[2]);
+					if (cmp > 0) {
+						return -1;
+					} else {if (cmp = 0) {
+						//do Output.printString(n[2]);
+						// do Output.printString("MATCH");
+						return n[3];
+					}}
+				} else { if (h > n[1]) {
+					return -1;
+				}}
+				let n = n[0];
+			}
+		}
+		
+		return -1;
+	} 
+
+}
+

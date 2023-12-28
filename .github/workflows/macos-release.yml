@@ -1,0 +1,32 @@
+name: macos-release
+on:
+  workflow_run:
+    workflows: ["jack-release"]
+    types:
+      - completed
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build
+        run: xcodebuild
+      - name: readme
+        run: mkdir -p jack ; cp README.md LICENSE.txt jack/
+      - name: bin
+        run: cp build/Release/jack jack/
+      - name: DMG
+        run: hdiutil create -volname JACK -srcfolder "jack"
+          -ov -format UDZO jack-macos.dmg
+      - uses: jossef/action-latest-release-info@v1.1.0
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./jack-macos.dmg
+          asset_name: jack-macos.dmg
+          asset_content_type: application/x-apple-diskimage

@@ -1,0 +1,169 @@
+/*
+ *                         jack standard library 
+ *
+ *                      1 april MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+class Output {
+	static int x, y;
+	static Font f;
+	function void init() {
+		let x = 0;
+		let y = 0;
+		let f = Font.new();
+		return;
+	}
+
+	function void deInit() {
+		return;
+	}
+
+	function void moveCursor(int row, int col) {
+		var int xx, yy;
+		let x = col;
+		let y = row;
+		if (x < 0) {
+			let x = 0;
+		}
+		if (x > 63) {
+			let x = 63;
+		}
+		if (y < 0) {
+			let y = 0;
+		}
+		if (y > 22) {
+			let y = 22;
+		}
+		let xx = x;
+		let yy = y;
+		do Output.printChar(32);
+		let x = xx;
+		let y = yy;
+/*#c 	
+#ifdef _WIN32
+	output = GetStdHandle(STD_OUTPUT_HANDLE);
+	coord.X = (SHORT)xx;
+	coord.Y = (SHORT)yy;
+	SetConsoleCursorPosition(output, coord);	
+#else
+	printf("\033[%ld;%ldf ", (long)yy + 1, (long)xx + 1);
+ 	fflush(stdout);
+#endif
+#*/
+//#py 	sys.stdout.write("\033[%d;%dH" % (col, row))
+		return;
+	}
+
+	function void printString(String s) {
+		var int i, l;
+		var char c;
+		let i = 0;
+		let l = s.length();
+		while (i < l) {
+			let c = s.charAt(i);
+			do Output.printChar(c);
+			let i = i + 1;
+		}
+		return;
+	}
+
+	function void println() {
+		let y = y + 1;
+		if (y > 22) {
+			let y = 22;
+		}
+		let x = 0;
+//#c 	putc('\n', stdout);
+//#py 	sys.stdout.write("\n")
+		return;
+	}
+	
+	function void printChar(char c) {
+		var int xx, yy;
+		var int i, j, l, p;
+		var Array chr;
+		var int m;
+		
+		if ((c > 1114111) | (c < 0)) {
+			return;
+		}
+		if ((c < 32) | (c > 126)) {
+			let c = 32;
+		}
+		let xx = x;
+		let yy = y;
+		let chr = f.get(c);
+		//let c = chr[1];
+		if (xx & 1) {
+			let m = 255;
+		} else {
+			let m = 255 * 256;
+		}
+		let i = 0;
+		let j = 0;
+
+		while (i < 11) {
+			let l = ((yy * 11) + i) * 32;
+			let l = l + (xx / 2);
+			let l = l + 16384;
+			let p = Memory.peek(l);
+			if ((xx & 1)) {
+				let p = (p & m) | (chr[j] * 256); 
+			} else {
+				let p = (p & m) | (chr[j] & 255); 
+			}
+			do Memory.poke(l, p);
+			let l = l + 32;
+			if (i < 10) {
+				let p = Memory.peek(l);
+				if (xx & 1) {
+					let p = (p & m) | (chr[j] & ~m); 
+				} else {
+					let p = (p & m) | ((chr[j] / 256)&255); 
+				}
+				do Memory.poke(l, p);
+			}	
+			let i = i + 2;
+			let j = j + 1;
+		}
+			
+//#c 	printf("%c", (char)c);
+//#c 	fflush(stdout);
+//#py 	sys.stdout.write(chr(c))
+		let x = x + 1;
+		if (x > 63) {
+			let x = 0;
+			let y = y + 1;
+			if (y > 22) {
+				let y = 22;
+			}
+		}
+		return;
+	}
+
+	function void printInt(int c) {
+		var String s;
+		let s = String.new(8);
+		let s = s.setInt(c);
+		do Output.printString(s);
+		do s.dispose();
+		return;
+	}
+
+	function void backSpace() {
+		var int xx, yy;
+		let x = x - 1;
+		if (x < 0) {
+			let x = 0;
+		}
+		let xx = x;
+		let yy = y;
+		do Output.printChar(8);
+		let x = xx;
+		let y = yy;
+		return;
+	}
+}

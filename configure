@@ -1,0 +1,4 @@
+#!/bin/sh
+
+sudo apt install build-essential git libx11-dev libgl1-mesa-dev libglu1-mesa-dev 
+echo done.

@@ -1,0 +1,497 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class JackTokenizer {
+	field File src;
+	field Xml x;
+	field Hash tbl;
+	field String token;
+	field char c;
+	field char ahead;
+	field int token_type;
+	field int key_word;
+	field int int_val;
+	field int line;
+	field int last_line;
+	field String new_file;
+	field char symbol_;
+	field boolean gen_xml;
+	field boolean inasm;
+	field boolean inasmmulti;
+	field boolean hack;
+
+	constructor JackTokeniser new(Xml destination, boolean ishack) {
+		let src = null;
+		let x = destination;
+		let token = String.new(256);
+		let new_file = null;
+		let c = 0;
+		let line = 0;
+		let last_line= -1;
+		let ahead = 0;
+		let token_type = -1;
+		let key_word = 0;
+		let symbol_ = 0;
+		let int_val = 0;
+		let gen_xml = false;
+		let inasm = false;
+		let inasmmulti = false;
+		let tbl = getSymbolHash();
+		let hack = ishack;
+		return this;
+	}
+
+	method void dispose() {
+		do tbl.dispose();
+		do token.dispose();
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method void init(File source, boolean generate_xml) {
+		let src = source;
+		if (src) {
+			let new_file = src.getName();
+		}
+		let gen_xml = generate_xml;
+		let c = 0;
+		let ahead = 0;
+		let token_type = -1;
+		let key_word = 0;
+		let int_val = 0;
+		let line = 0;
+		let last_line = -1;
+		return;
+	}
+
+
+	method Hash getSymbolHash() {
+		var Hash h;
+		let h = Hash.new(256, null);
+		do h.add("class", C.CLASS());
+		do h.add("method", C.METHOD());
+		do h.add("function", C.FUNCTION());
+		do h.add("constructor", C.CONSTRUCTOR());
+		if (~hack) {
+			do h.add("callback", C.CALLBACK());
+		}
+		do h.add("int", C.INT());
+		do h.add("boolean", C.BOOLEAN());
+		do h.add("char", C.CHAR());
+		do h.add("void", C.VOID());
+		do h.add("var", C.VAR());
+		do h.add("static", C.STATIC());
+		do h.add("field", C.FIELD());
+		do h.add("let", C.LET());
+		do h.add("do", C.DO());
+		do h.add("if", C.IF());
+		do h.add("else", C.ELSE());
+		do h.add("while", C.WHILE());
+		do h.add("return", C.RETURN());
+		do h.add("true", C.TRUE());
+		do h.add("false", C.FALSE());
+		do h.add("null", C.NULL());
+		do h.add("this", C.THIS());
+		do h.add("#", C.ASM());
+		do h.add("+", C.PLUS());
+		do h.add("-", C.MINUS());
+		do h.add("*", C.MULTIPLY());
+		do h.add("/", C.DIV());
+		do h.add("&", C.AND());
+		do h.add("|", C.OR());
+		do h.add(">", C.GREATER());
+		do h.add("<", C.LESS());
+		do h.add("=", C.EQUAL());
+		do h.add(",", C.COMMA());
+		do h.add("~", C.TILDE());
+		do h.add(";", C.SEMICOLON());
+		do h.add(".", C.DOT());
+		do h.add("{", C.LEFT_CURLY_BRACKET());
+		do h.add("}", C.RIGHT_CURLY_BRACKET());
+		do h.add("(", C.LEFT_PARENTHESIS());
+		do h.add(")", C.RIGHT_PARENTHESIS());
+		do h.add("[", C.LEFT_SQUARE_BRACKET());
+		do h.add("]", C.RIGHT_SQUARE_BRACKET());
+		//do h.stats();
+		return h;
+	}
+
+	method boolean hasMoreTokens() {
+		var boolean in_comment;
+		var boolean ignore_line;
+		var int start;
+
+		if (token_type = -1) {
+			let c = src.readUtf8();
+			let ahead = src.readUtf8();
+			let token_type = 0;
+		}
+
+		let in_comment = false;
+		let ignore_line = false;
+		let inasm = false;
+		let inasmmulti = false;
+		let start = line;
+		while ((c > 0) & (c < 1114112)) { // U+0001 to U+00110000
+			if (ignore_line) {
+				if (c = 10) {
+					let ignore_line = false;
+				}
+			} else { if (in_comment) {
+				if (c = 42) { // *
+					if (ahead = 47) { // /
+						let in_comment = false;
+						do next();			
+					}
+				} 
+			} else {
+				if (c = 47) { // /
+					if (ahead = 42) { // *
+						do next();
+						if (ahead = 35) { // #
+							let inasmmulti = true;
+							do next();
+							do next();
+							return true;
+						} else { 
+							let start = line;
+							let in_comment = true;
+						}
+					} else { if (ahead = 47) { //
+						do next();
+						if (ahead = 35) { // #
+							let inasm = true;
+							do next();
+							do next();
+							return true;
+						} else {
+							let ignore_line = true;
+						}
+					} else {
+						return true;
+					}}
+				} else {  if ((c = 9) | (c = 10) |
+					 (c = 13) | (c = 32)) 
+				{
+					 // \t\n\r space
+					let c = c;
+				} else {
+					return true;
+				}}
+			}}
+			do next();			
+		} 
+		if (in_comment) {
+			do error(start, "Comment toward end of file.");
+		}	
+		let token_type = 0;
+		return false;
+	}
+
+	method void next() {	
+		if (c = 10) {
+			let line = line + 1;
+		}
+		let c = ahead;
+		let ahead = src.readUtf8();
+		return;
+	}
+	
+	method void addLine() {
+		var String u;
+		if (line > last_line) {
+			let u = String.new(8);
+			let u = u.setInt(line + 1);
+			do x.addAttribute("line", u);
+			do u.dispose();
+			let last_line = line;
+		}
+		if (new_file) {
+			do x.addAttribute("file", new_file);
+			let new_file = null;
+		}
+		return;
+	}
+
+	method String getFileName() {
+		return new_file;
+	}
+
+	method int getTokenConst(String s) {
+		return tbl.get(s);
+	}
+
+	method void advance() {
+		var int start;
+		var int l;
+		var String k;
+		var boolean key_or_id;
+		var boolean in_string;
+		var boolean in_int;
+		var boolean in_asm;
+		var boolean in_asm_multi;
+		var boolean in_escape;
+		let l = 0;
+		let key_or_id = false;
+		let in_string = false;
+		let in_int = false;
+		let in_asm = inasm;
+		let in_asm_multi = inasmmulti;
+		let in_escape = false;
+		do token.setCharAt(0, 0);
+		let start = line;
+		while ((c > 0) & (c < 1114112)) { // U+0001 to U+00110000
+	
+			if (in_string & (c = 34) & (~in_escape)) {
+				let token_type = C.STRING_CONST();
+				if (gen_xml) {
+					do x.addElement(token_type);
+					do x.addContent(token);
+					do addLine();
+					do x.closeCurrent();
+				}
+				do next();
+				return;
+			} else { if (in_int) { 
+				if (((c > 47) & (c < 58))) {
+					let token = token.appendChar(c);
+					let l = l + 1;
+				} else {
+					let token_type = C.INT_CONST();
+					if (gen_xml) {
+						do x.addElement(token_type);
+						do x.addContent(token);
+						do addLine();
+						do x.closeCurrent();
+					}
+					return;
+				}
+			} else { if (in_string) { 
+				if (in_escape) {
+					let in_escape = false;
+					if (c = 92) {
+						let c = 92;
+					}
+					if (c = 34) {
+						let c = 34;
+					}
+				} else {
+					if (c = 10) {
+						do error(line, 
+							"newline in string");
+						return;
+					} else { if (c = 92) {
+						if (hack) {
+							let in_escape = true;
+							let c = 0;
+						}
+					}}
+				}
+				if (c) {
+					let token = token.appendChar(c);
+					let l = l + 1;
+				}
+			} else { if (in_asm) { 
+				let token = token.appendChar(c);
+				let l = l + 1;
+				if (c = 10) {
+					let token_type = C.ASM();
+					if (gen_xml) {
+						do x.addElement(token_type);
+						do x.addContent(token);
+						do addLine();
+						do x.closeCurrent();
+					}
+					do next();
+					let inasm = false;
+					return;
+				}
+			} else { if (in_asm_multi) {
+				if ((c = 35) & (ahead = 42)) { // #*
+					do next();
+					if (ahead = 47) { // /
+						let token_type = C.ASM();
+						let token = 
+							token.appendChar(10);
+						let l = l + 1;
+						do next();
+						do next();
+						let inasmmulti = false;
+						return;
+					}
+					let token = token.appendChar(35);
+					let l = l + 1;
+					let token = token.appendChar(42);
+					let l = l + 1;
+				} else {
+					let token = token.appendChar(c);
+					let l = l + 1;
+				}
+			} else { if (c = 34) {
+				let in_string = true;	
+			} else { if (((c > 64) & (c < 91)) |
+				((c > 96) & (c < 123)) |
+				(c = 95) |
+				((c > 47) & (c < 58) & (l > 0)))
+			{
+				let key_or_id = true;
+				let token = token.appendChar(c);
+				let l = l + 1;
+
+			} else { if (key_or_id) {
+				let k = getTokenConst(token);
+				//do Output.printInt(k);
+				//do Output.println();
+				
+				if ((k = C.CLASS()) |
+					(k = C.METHOD()) |
+					(k = C.FUNCTION()) |
+					(k = C.CONSTRUCTOR()) |
+					(k = C.CALLBACK()) |
+					(k = C.INT()) |
+					(k = C.BOOLEAN()) |
+					(k = C.CHAR()) |
+					(k = C.VOID()) |
+					(k = C.VAR()) |
+					(k = C.STATIC()) |
+					(k = C.FIELD()) |
+					(k = C.LET()) |
+					(k = C.DO()) |
+					(k = C.IF()) |
+					(k = C.ELSE()) |
+					(k = C.WHILE()) |
+					(k = C.RETURN()) |
+					(k = C.TRUE()) |
+					(k = C.FALSE()) |
+					(k = C.NULL()) |
+					(k = C.THIS()))
+				{
+					let token_type = C.KEYWORD();
+					let key_word = k;
+				} else {
+					let token_type = C.IDENTIFIER();
+
+				}
+				if (gen_xml) {
+					do x.addElement(token_type);
+					do x.addContent(token);
+					do addLine();
+					do x.closeCurrent();
+				}
+				return;
+			} else { if (((c > 47) & (c < 58))) {
+				let token = token.appendChar(c);
+				let l = l + 1;
+				let in_int = true;
+			} else { 
+			    let token = token.appendChar(c);
+			    let c = getTokenConst(token);
+			    if ((c = C.LEFT_CURLY_BRACKET()) |
+				(c = C.RIGHT_CURLY_BRACKET()) |
+				(c = C.LEFT_PARENTHESIS()) |
+				(c = C.RIGHT_PARENTHESIS()) |
+				(c = C.LEFT_SQUARE_BRACKET()) |
+				(c = C.RIGHT_SQUARE_BRACKET()) |
+				(c = C.DOT()) |
+				(c = C.COMMA()) |
+				(c = C.SEMICOLON()) |
+				(c = C.PLUS()) |
+				(c = C.MINUS()) |
+				(c = C.MULTIPLY()) |
+				(c = C.DIV()) |
+				(c = C.AND()) |
+				(c = C.OR()) |
+				(c = C.GREATER()) |
+				(c = C.LESS()) |
+				(c = C.EQUAL()) |
+				(c = C.TILDE())) 
+
+			{
+				let token_type = C.SYMBOL();
+				let symbol_ = c;	
+				if (gen_xml) {
+					do x.addElement(token_type);
+					do x.addContent(token);
+					do addLine();
+					do x.closeCurrent();
+				}
+				do next();
+				return;
+			} else {  if ((c = 9) | (c = 10) |
+					 (c = 13) | (c = 32)) 
+			{
+				do error(line, "White space");
+				let line = line;
+			} else {
+				let token = token.appendChar(c);
+				do error(line, token);
+				do next();
+				return;
+			}}}}}}}}}}}
+				  	
+			do next();				
+		}
+		if (in_asm | in_asm_multi) {
+			do error(start, "Assembly text toward end of file.");
+		}	
+		if (in_string) {
+			do error(start, "Comment toward end of file.");
+		}
+		if (in_int | key_or_id) {
+			do error(start, "Reached end of file token.");
+		}
+		return;
+	}
+
+	method int error(int line_, String w) {
+		do Output.printString("Lexer error, in ");
+		do Output.printString(src.getName());
+		do Output.printString(" unexpected '");
+		do Output.printString(w);
+		do Output.printString("' at line ");
+		do Output.printInt(line_ + 1);
+		do Output.println();
+		let c = 0;
+		return 0;
+	}
+
+	method Xml getXml() {
+		return x;
+	}
+
+	method int getLine() {
+		return line + 1;
+	}
+
+	method int tokenType() {
+		return token_type;
+	}
+
+	method int keyWord() {
+		return key_word;
+	}
+
+	method char symbol() {
+		return symbol_;
+	}
+
+	method String identifier() {
+		return token;
+	}
+
+	method int intVal() {
+		return token.intValue();
+	}
+
+	method String stringVal() {
+		return token;
+	}
+}
+

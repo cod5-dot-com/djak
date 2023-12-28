@@ -1,0 +1,250 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class JackCompiler {
+	field File src;
+	field Xml x;
+	field JackTokenizer t;
+	field JackParser comp;
+	field boolean hack;
+
+	constructor JackCompiler new(boolean hack_mode) {
+		let src = null;
+		let x = Xml.new();
+		let t = JackTokenizer.new(x, hack_mode);
+		let comp = JackParser.new(t);
+		let hack = hack_mode;
+		return this;
+	}
+
+	method void dispose() {
+		do t.dispose();
+		do x.dispose();
+		if (comp) {
+			do comp.dispose();
+		}
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method boolean compile(String src_) {
+		var File dst, a;
+		var JackAstToC c;
+		var String s;
+
+		let src = File.new(src_, false);
+		let dst = File.new("test.xml", true);
+		let s = src_.copy();
+		let s = s.appendString(".h");
+		let a = File.new(s, true);
+		do s.dispose();
+		do x.clear();
+		do t.init(src, false);
+		do comp.init(src);
+		do comp.compileClass(t, dst);
+	
+		let c = JackAstToC.new(comp, hack);
+		do c.compile(a);	
+		do c.dispose();
+
+		do x.dump(dst);
+
+		do a.dispose();
+		do dst.dispose();
+		do src.dispose();
+		let src = null;
+		//if (String2.compare("ctests/lib/ext/Gif.jack", src_)=0) {
+		//	do Sys.halt();
+		//}
+		return true;
+	}
+
+	method void copyHead(File dst, String source) {
+		var String s, l;
+		var File src_;
+		var String b;
+
+		let src_ = File.new(source, false);
+		let s = "#ifdef JACK_IMPLEMENTATION";
+		let s = s.copy();
+		let s = s.appendChar(10);
+		let b = String.new(1024);
+		let l = src_.readLine(b);
+		while (~(l = null)) {
+			let b = l;
+			if (s.compare(b) = 0) {
+				let l = null;
+			} else {
+				do dst.writeString(b);	
+				let l = src_.readLine(b);
+			}
+		}
+		do s.dispose();
+		do b.dispose();
+		do src_.dispose();
+		return;
+	}
+
+	method void copy(File dst, String source) {
+		var String l;
+		var File src_;
+		var String b;
+		let src_ = File.new(source, false);
+		let b = String.new(1024);
+		let l = src_.readLine(b);
+		while (~(l = null)) {
+			let b = l;
+			do dst.writeString(b);	
+			let l = src_.readLine(b);
+		}
+		do b.dispose();
+		do src_.dispose();
+		return;
+	}
+
+	method void copyBody(File dst, String source) {
+		var String s, l;
+		var File src_;
+		var String b;
+		var boolean doit;
+		let doit = false;
+		let src_ = File.new(source, false);
+		let s = "#ifdef JACK_IMPLEMENTATION";
+		let s = s.copy();
+		let s = s.appendChar(10);
+		let b = String.new(1024);
+		let l = src_.readLine(b);
+		while (~(l = null)) {
+			let b = l;
+			if (doit = false) {
+				if (s.compare(b) = 0) {
+					let doit = true;
+				}  
+			}
+			if (doit) {
+				do dst.writeString(b);	
+			}
+			let l = src_.readLine(b);
+		}
+		do s.dispose();
+		do b.dispose();
+		do src_.dispose();
+	
+
+		return;
+	}
+
+	method boolean link(String dir, Buffer files) {
+		var int i, l;
+		var String s;
+		var File dst;
+		var File sr;
+		let s = dir.copy();
+		let l = s.length();
+		if (s.charAt(l-1) = 47) {
+			do s.setCharAt(l-1, 0);
+		}
+		let s = s.appendString(".c");
+		let dst = File.new(s, true);
+		do s.dispose();
+		let i = 0;
+		do dst.writeByte(10);		
+		do dst.writeString("#ifndef var");
+		do dst.writeByte(10);		
+		if (hack) {
+			do dst.writeString("#define JACK_HACK");
+			do dst.writeByte(10);		
+			do dst.writeString("#define var short");
+			do dst.writeByte(10);		
+			do dst.writeString("#define __poke Memory__poke");
+			do dst.writeByte(10);		
+			do dst.writeString("#define __peek Memory__peek");
+			do dst.writeByte(10);		
+		} else {
+			do dst.writeString("#ifdef _WIN64");
+			do dst.writeByte(10);		
+			do dst.writeString("#include <windows.h>");
+			do dst.writeByte(10);		
+			do dst.writeString("#define var __int64");
+			do dst.writeByte(10);		
+			do dst.writeString("#else");
+			do dst.writeByte(10);		
+			do dst.writeString("#define var long");
+			do dst.writeByte(10);		
+			do dst.writeString("#endif");
+			do dst.writeByte(10);		
+			do dst.writeString(
+			  "#define __poke(a, v) __peek((a)) = v");
+			do dst.writeByte(10);		
+			do dst.writeString(
+			  "//#define __peek(a) (((var*)(a))[0])");
+			do dst.writeByte(10);		
+			do dst.writeString(
+			  "#define __peek(a) (((var*)((a)*sizeof(var)))[0])");
+			do dst.writeByte(10);		
+		}
+		do dst.writeString("#endif");
+		do dst.writeByte(10);		
+	
+		while (i < files.getSize()) {
+			let s = files.getAt(i);
+			let s = s.copy();
+			let s = s.appendString(".h");
+			do copyHead(dst, s);
+			do dst.writeByte(10);		
+			do s.dispose();
+			let i = i + 1;
+		}
+		let i = 0;
+		do dst.writeString("#define JACK_IMPLEMENTATION");
+		do dst.writeByte(10);		
+		let s = dir.copy();
+		let s = s.appendString("/lib/c/main.h");
+		do copy(dst, s);
+		do s.dispose();
+		let s = dir.copy();
+		let s = s.appendString("/lib/c/X11.h");
+		do copy(dst, s);
+		do s.dispose();
+		let s = dir.copy();
+		let s = s.appendString("/lib/c/win32.h");
+		do copy(dst, s);
+		do s.dispose();
+		let s = dir.copy();
+		let s = s.appendString("/lib/c/mac.h");
+		do copy(dst, s);
+		do s.dispose();
+		let s = dir.copy();
+		let s = s.appendString("/lib/c/ios.h");
+		do copy(dst, s);
+		do s.dispose();
+		let s = dir.copy();
+		let s = s.appendString("/lib/c/android.h");
+		do copy(dst, s);
+		do s.dispose();
+
+		while (i < files.getSize()) {
+			let s = files.getAt(i);
+			let s = s.copy();
+			let s = s.appendString(".h");
+			do copyBody(dst, s);
+			do dst.writeByte(10);		
+			let sr = File.new(s, false);
+			do sr.remove();
+			do sr.dispose();
+			do s.dispose();
+			let i = i + 1;
+		}
+		do dst.dispose();
+	
+		return true;
+	}
+}
+

@@ -1,0 +1,172 @@
+/*
+ *                         jack standard library 
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Math {
+	function void init() {
+		return;
+	}
+	
+	function void deInit() {
+		return;
+	}
+
+	function int abs(int a) {
+		if (a < 0) {
+			return -a;
+		}
+		return a;
+	}
+	
+	function int multiply(int x, int y) {
+		var int sum, j, b;
+		var int shiftedX;
+		let sum = 0;
+		let shiftedX = x;
+		if ((x < 1) | (y < 1)) {
+			return 0;
+		}
+		let j = 0;
+		let b = 1;
+		while (j < 16) {
+			if (y & b) {
+				let sum = sum + shiftedX;
+			}
+			let b = b + b;
+			let shiftedX = shiftedX + shiftedX;
+			let j = j + 1;
+		}
+		return sum;
+	}
+
+	function int divide(int x, int y) {
+		var int q;
+		if ((x < 0) | (y < 1)) {
+			return 0;
+		} 
+		if (y > x) {
+			return 0;
+		}
+		let q = Math.divide(x, y + y);
+		if ((x - ((q + q) * y)) < y) {
+			return q + q;
+		}
+		return (q + q) + 1;
+	}
+
+	function int min(int x, int y) {
+		if (x < y) {
+			return x;
+		}
+		return y;
+	}
+	
+	function int max(int x, int y) {
+		if (x > y) {
+			return x;
+		}
+		return y;
+	}
+
+	function int sqrt(int x) {
+		var int y, j, y2j, n2, xp;
+		if (x < 1) {
+			return 0;
+		}
+		let xp = x + 1;
+		let y = 0;
+		let n2 = 128;
+		let j =7;
+		while (j > -1) {
+			let y2j = y + n2;
+			let y2j = y2j * y2j;
+			if (y2j < xp) {
+				let y = y + n2;
+			}
+			let n2 = n2 / 2;
+			let j = j - 1;
+		}
+		return y;
+	}
+
+	function int shiftLeft(int value, int shift) {
+		while (shift > 0) {
+			let value = value * 2;
+			let shift = shift - 1;
+		}
+		return value;
+	}
+
+	function int shiftRight(int value, int shift) {
+		while (shift > 0) {
+			let value = value / 2;
+			let shift = shift - 1;
+		}
+		return value;
+	}
+
+	function int rem(int a, int b) {
+		var int c;
+		if (b = 0) {
+			return 0;
+		}
+		let c = a / b;
+		let c = c * b;
+		return a - c;
+	}
+
+	function int xor(int a, int b) {
+		var int c;
+		let c = a | b;
+		let c = c & (~((a) & (b)));
+		return c;
+	}
+	
+	function int log2(int n) {
+		var int r;
+		let r = 0;
+		if (n = 0) {
+			return -1;
+		}
+		while (n > 1) {
+			let n = Math.shiftRight(n, 1);
+			let r = r + 1;
+		}
+		return r;
+	}
+
+	function int sizeOfInt() {
+		var int s;
+//#c 	s = sizeof(var);
+//#py 	s = 4
+		return s;
+	}
+
+	function boolean isBigEndian() {
+		var boolean s;
+//#c 	int x = 1;
+//#c 	char *y = (char*)&x;
+//#c 	s = 0;
+//#c 	if (!y[0]) { s = -1;}
+//#py 	s = 0	
+//#py 	if (sys.byteorder == "big"):	
+//#py 		s = -1
+		return s;
+	}
+
+	function boolean isWindows() {
+		var boolean s;
+		let s = false;
+//#c #ifdef _WIN32
+//#c 	s = -1;
+//#c #endif
+		return s;
+	}
+}
+

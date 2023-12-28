@@ -1,0 +1,263 @@
+/*
+ *                         jack standard library 
+ *
+ *                      1 april MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+class String {
+	field Array str;
+	field int size;
+
+	constructor String new(int maxLength) {
+		let str = Array.new(maxLength + 1);
+		let str[0] = 0;
+		let size = maxLength;
+		return this;
+	}
+
+	method void dispose() {
+		do str.dispose();
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method int length() {
+		var Array s;
+		var int l;
+		let l = 0;
+		let s = str;
+		if (s = null) {
+			return 0;
+		}
+		while (false=(s[l] = 0)) {
+			let l = l + 1;
+		}
+		return l;
+	}
+
+	method char charAt(int a) {
+		var char ret;
+		let ret = str[a];
+		return ret;
+	}
+
+	method void setCharAt(int j, char c) {
+		var Array s;
+		let s = str;
+		let s[j] = c;
+		return;
+	}
+	
+	method Array getArray() {
+		return str;
+	}
+
+	method String appendChar(char c) {
+		var int l, i;
+		var int nl;
+		var int max;
+		var Array b, d;
+		let d = str;
+		if (size < 1) {
+			do Sys.error(12);
+		}
+		let max = size;
+		let l = length();
+		if (l < (max - 1)) {
+			let str[l] = c;
+			let str[l + 1] = 0;
+			return this;
+		}
+		let nl = (l * 2) + 4;
+		let b = Array.new(nl + 1);
+		let i = 0;
+		while (i < l) {
+			let b[i] = d[i];
+			let i = i + 1;
+		}
+		let b[l] = c;
+		let b[l + 1] = 0;
+		do str.dispose();
+		let size = nl;
+		let str = b;
+		return this;
+	}
+
+	method void eraseLastChar() {
+		var int l;
+		var Array s;
+		let s = str;
+		let l = length();
+		if (l > 0) {
+			let s[l-1] = 0;
+		}
+		return;
+	}
+	
+	method int intValue() {
+		var int v, s, d, i;
+		var Array o;
+		let o = str;
+		let v = 0;
+		let s = 1;
+		let d = o[0];
+		let i = 1;
+		if (d = 45) {
+			let s = -1;
+			let d = o[i];
+			let i = i + 1;
+		}
+		while ((d > 47) & (d < 58)) {
+			let v = v * 10;
+			let v = v + d - 48;
+			let d = o[i];
+			let i = i + 1;
+		} 
+		return v * s;
+	}
+	
+	method String setInt(int j) {
+		var int n, k;
+		var String s;
+		var boolean p;
+		let p = false;
+		let s = this;
+		do s.setCharAt(0, 0);
+		if (j < 0) {
+			let j = -j; 
+			let s = s.appendString("-");
+		}
+		let n = 10000;
+/*#c
+ 	if (sizeof(var) == 8) {
+ 		n = n * n * n * n * 100;
+ 	} else if (sizeof(var) == 4) {
+ 		n = n * n * 10; 
+ 	} 
+#*/
+		while (n > 0) {
+			let k = j / n;
+			if (k > 0) {
+				let p = true;
+			}
+			
+			if (p) {
+				let s = s.appendChar(k + 48);
+			}
+			let j = Math.rem(j, n);
+			let n = n / 10;
+		}
+		if (p = false) {
+			let s = s.appendChar(48);
+		}
+		return this;
+	}
+
+	method String appendFromNative(Array native) {
+		var int l, i, c;
+		var Array n;
+		var String s;
+		let s = this;
+		let n = native;
+		let i = 0;
+/*#c 
+#ifdef JACK_HACK 
+ 	n = 0;
+ 	l = n;
+#else
+#ifdef _WIN32
+ 	l = (var)wcslen((wchar_t*)n);
+#else
+	l = strlen((char*)n);
+#endif 
+#endif 
+#*/
+
+//#py 	l = len(n)
+		while (i < l) {
+/*#c 
+#ifdef JACK_HACK 
+ 	c = 0;
+#else
+#ifdef _WIN32
+ 		c = (var)((wchar_t*)n)[i];// FIXME UTF16
+#else
+ 		c = (var)(((char*)n)[i]) & 255; // FIXME UTF8
+#endif 
+#endif 
+#*/
+//#py 		c = ord(n[i])
+//#py 		#print("JJJJ" + str(s) + "  " + str(c))
+			let s = s.appendChar(c);
+			let i = i + 1;
+		}
+		return this;
+	}
+
+	function char ord(String s) {
+		return s[0];
+	}
+
+	function char backSpace() {
+		return 8;
+	}
+
+	function char doubleQuote() {
+		return 34;
+	}
+
+	function char newLine() {
+		return 10;
+	}
+
+	method String copy() {
+		var String s;
+		var int j, l;
+		let j = 0;
+		let l = length();
+		let s = String.new(l + 1);
+		while (j < l) {
+			let s = s.appendChar(charAt(j));
+			let j = j + 1;
+		}
+		return s;
+	}
+
+	method String appendString(String p) {
+		var int j, l;
+		var String s;
+		let s = this;
+		let j = 0;
+		let l = p.length();
+		//do Output.printString(this);
+		while (j < l) {
+			let s = s.appendChar(p.charAt(j));
+			let j = j + 1;
+		}
+		return this;
+	}
+
+
+	method int compare(String s) {
+		var String p;
+		var int j, lp, ls, r;
+		let p = this;
+		let lp = p.length();
+		let ls = s.length();
+		let j = 0;
+		while ((j < lp) & (j < ls)) {
+			let r = p.charAt(j) - s.charAt(j);
+			if (r) {
+				return r;
+			}	
+			let j = j + 1;
+		}
+		return lp - ls;
+	}
+
+
+
+}

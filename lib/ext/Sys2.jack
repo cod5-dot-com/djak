@@ -1,0 +1,52 @@
+/*
+ *                         jack standard library 
+ *
+ *                      1 april MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+class Sys2 {
+	static Buffer args_;
+
+	function void init() {
+		return;
+	}
+
+	function void deInit() {
+		var Buffer b;
+		if (args_) {
+			let b = args_;
+			do b.dispose();
+			let args_ = null;
+		}
+		return;
+	}
+	
+	function Buffer args() {
+		var Array a;
+		var String s;
+		var int i;
+		var int isq;
+		var Buffer b;
+		if (args_) {
+			return args_;
+		}
+		let args_ = Buffer.newString(1);
+		let i = 0;
+//#c 	isq = Sys__argc__;
+//#py 	isq = len(sys.argv)
+		while (i < isq) {
+//#c 		a = (var)Sys__argv__[i];
+//#py 		a = sys.argv[i]
+			let s = String.new(255);
+			let s = s.appendFromNative(a);
+			let b = args_;
+			do b.append(s);
+			let i = i + 1;
+		}
+		return args_;
+	}
+}
+

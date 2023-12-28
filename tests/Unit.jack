@@ -1,0 +1,33 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Unit {
+	static int maxlevel;
+	
+	function void setLevel(int l) {
+		let maxlevel = l;
+		return;
+	}
+
+	function void log(int level, String txt, int state) {
+		if (level > maxlevel) {
+			return;
+		}
+		do Output.printString(txt);
+		do Output.printString("... ");
+		if (state) {
+			do Output.printString("pass");
+		} else {
+			do Output.printString("fail");
+		}
+		do Output.println();
+		return;
+	}
+}

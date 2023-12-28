@@ -1,0 +1,55 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class GifLzw {
+	field int prefix; 	// int16
+	field int first;	// byte
+	field int suffix;	// byte
+	
+	constructor GifLzw new() {
+		let prefix = 0;
+		let first = 0;
+		let suffix = 0;
+		return this;
+	}
+
+	method void dispose() {
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method int getPrefix() {
+		return prefix;
+	}
+
+	method void setPrefix(int v) {
+		let prefix = v;
+		return;
+	}
+
+	method int getFirst() {
+		return first;
+	}
+
+	method void setFirst(int v) {
+		let first = v;
+		return;
+	}
+
+	method int getSuffix() {
+		return suffix;
+	}
+
+	method void setSuffix(int v) {
+		let suffix = v;
+		return;
+	}
+
+}

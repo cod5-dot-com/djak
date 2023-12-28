@@ -1,0 +1,65 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class UnitString {
+	function boolean isOk(int l) {
+		var String s;
+		var int i;
+		let i = 0;
+		let s = String.new(1);
+		while (i < 512) {
+			let s = s.appendChar(65);
+			let i = i + 1;
+		} 
+		do s.dispose();
+		do Unit.log(l + 1, "String.append...", true);
+		do UnitString.isOk1(l);
+		return Memory.checkEmpty();
+	}
+	
+	function boolean isOk1(int l) {
+		var String s;
+		var int i;
+		let l = l + 1;
+		let s = "Hello World";
+		let s = s.copy();
+		let s = s.appendString("!!!");
+		do s.dispose();
+		//let s = String2.appendString("GOTCHA", "!!!");
+		//do s.dispose();
+		do Unit.log(l + 1, "String.copy...", true);
+		let s = "AA";
+		if (s.compare("BA") < 0) {
+			do Unit.log(l, "String.compare < ok...", true);
+		} else {
+			do Unit.log(l, "String.compare < fail...", false);
+		}
+		let s = "BA";
+		if (s.compare("AA") > 0) {
+			do Unit.log(l, "String.compare > ok...", true);
+		} else {
+			do Unit.log(l, "String.compare > fail...", false);
+		}
+		let s = "AA";
+		if (s.compare("AA") = 0) {
+			do Unit.log(l, "String.compare = ok...", true);
+		} else {
+			do Unit.log(l, "String.compare = fail...", false);
+		}
+		let s = "AAA";
+		if (s.compare("AA") > 0) {
+			do Unit.log(l, "String.compare len ok...", true);
+		} else {
+			do Unit.log(l, "String.compare len fail...", false);
+		}
+		return Memory.checkEmpty();
+	}
+}
+

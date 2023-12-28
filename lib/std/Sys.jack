@@ -1,0 +1,79 @@
+/*
+ *                         jack standard library 
+ *
+ *                      1 april MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+class Sys {
+	static boolean in_error;
+
+	function void init() {
+		let in_error = false;
+		do Memory.init();
+/*#c 
+#ifndef JACK_HACK
+ 	Sys2__init();
+#endif
+#*/
+		do Math.init();
+		do Output.init();
+		do Screen.init();
+		do Keyboard.init();
+		do Main.main();
+		return;
+	}
+
+	function void deInit() {
+		do Math.deInit();
+		do Output.deInit();
+		do Screen.deInit();
+		do Keyboard.deInit();
+		do Memory.deInit();
+//#py 	Sys__disposeStrings()
+		return;
+	}
+	
+	function void halt() {
+//#c 	exit(0);
+//#py 	exit(0)
+		return;
+	}
+
+	function void error(int errorCode) {
+		if (in_error) {
+			return;
+		}
+		let in_error = true;
+		do Output.printString("Error(");
+		do Output.printInt(errorCode);
+		do Output.printString(")");
+		do Output.println();
+/*#c
+ 	errorCode = 0;
+ 	errorCode = 1 / (errorCode);
+ 	exit(errorCode);
+#*/
+//#py 	exit(errorCode)
+
+		let in_error = false;
+		return;
+	}
+
+	function void wait(int duration) {
+		do Screen.processEvents(true);
+/*#c 
+#ifdef _WIN32
+ 	Sleep(duration);
+#else
+ 	usleep(duration * 1000);
+#endif
+#*/
+
+//#py 	time.sleep(duration / 1000.0)
+		return;
+	}
+}
+

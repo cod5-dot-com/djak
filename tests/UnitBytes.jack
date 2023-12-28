@@ -1,0 +1,28 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class UnitBytes {
+	function boolean isOk(int l) {
+		var Bytes s;
+		var Buffer b;
+		var int i;
+		let i = 0;
+		let s = Bytes.new(1);
+		while (i < 512) {
+			do s.appendByte(65);
+			let i = i + 1;
+		} 
+		do s.dispose();
+		do Unit.log(l + 1, "Bytes.appendByte...", true);
+		return Memory.checkEmpty();
+	}
+	
+}
+

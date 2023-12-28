@@ -1,0 +1,245 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Bytes {
+	static int addressmask;
+	static int bytesize;
+	static boolean isbig;
+	static boolean iswin;
+	static int log2;
+	field Array buf;
+	field int size;
+	field int pos;
+	field Array string;
+
+	constructor Bytes new(int size_in_byte) {
+		var int i;
+		var Array s;
+		let isbig = Math.isBigEndian();
+		let iswin = Math.isWindows();
+		let pos = 0;
+		let bytesize = Math.sizeOfInt();
+		let addressmask = bytesize - 1;
+		let log2 = Math.log2(bytesize);
+		if (log2 < 0) {
+			let log2 = 0;
+		}
+		let size = Math.shiftRight((size_in_byte + addressmask), log2) + 1;
+		let buf = Array.new(size);
+		let i = 0;
+		while (i < size) {	
+			let buf[i] = 0;
+			let i = i + 1;
+		}
+		let s = 0;
+//#py 	s = "";
+		let string = s;
+		return this;
+	}
+
+	method void dispose() {
+		var Array s;
+		let s = 0;
+//#py 	s = None;
+		let string = s;
+		do buf.dispose();
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method void alloc(int s) {
+		var int nsize, i, l;
+		var Array nbuf, b;
+		let nsize = Math.shiftRight(s + bytesize, log2) + 1;
+		let nbuf = Array.new(nsize);
+		let l = size;
+		let i = 0;
+		let b = buf;
+		if (nsize < size) {
+			return;
+		}
+		while (i < l) {	
+			let nbuf[i] = b[i];
+			let i = i + 1;
+		}
+		let l = nsize;
+		while (i < l) {	
+			let nbuf[i] = 0;
+			let i = i + 1;
+		}
+		do buf.dispose();
+		let buf = nbuf;
+		let size = nsize; 
+		return;
+	}
+
+	method Array getBuffer() {
+		return buf;
+	}
+
+	method int length() {
+		return pos;
+	}
+	
+	method int getByte(int address) {
+		var int s, a, v;
+		let s = Math.shiftLeft(address & addressmask, 3);
+		let a = Math.shiftRight(address, log2);
+		let v = buf[a];
+		let v = Math.shiftRight(v, s) & 255;		
+		return v;
+	}
+	
+	method void setByte(int address, int b) {
+		var int s, a, v, m;
+		let s = Math.shiftLeft(address & addressmask, 3);
+		let a = Math.shiftRight(address, log2);
+		let m = Math.shiftLeft(255, s);
+		let v = Math.shiftLeft(b & 255, s);		
+		let buf[a] = (buf[a] & (~m)) | v;
+		return;
+	}
+	
+	method void appendByte(int b) {
+		if (size < (Math.shiftRight(pos + bytesize, log2) + 1)) {
+			do alloc(pos + 256);
+		}
+		do setByte(pos, b);
+		let pos = pos + 1;
+		return;	
+	}
+	
+	method void append16bit(int b) {
+		do appendByte(b);
+		do appendByte(Math.shiftRight(b, 8));
+		return;	
+	}
+
+	method void append32bit(int b) {
+		do append16bit(b);
+		do append16bit(Math.shiftRight(b, 16));
+		return;	
+	}
+
+	method void append64bit(int b) {
+		do append32bit(b);
+		do append32bit(Math.shiftRight(b, 32));
+		return;	
+	}
+	
+	method void append16bitBig(int b) {
+		do appendByte(Math.shiftRight(b, 8));
+		do appendByte(b);
+		return;	
+	}
+
+	method void append32bitBig(int b) {
+		do append16bit(Math.shiftRight(b, 16));
+		do append16bit(b);
+		return;	
+	}
+
+	method void append64bitBig(int b) {
+		do append32bit(Math.shiftRight(b, 32));
+		do append32bit(b);
+		return;	
+	}
+
+
+	method void appendInt(int b) {
+		if (bytesize = 8) {
+			if (isbig) {
+				do append64bitBig(b);
+			} else {
+				do append64bit(b);
+			}
+			return;
+		}
+		if (bytesize = 4) {
+			if (isbig) {
+				do append32bitBig(b);
+			} else {
+				do append32bit(b);
+			}
+			return;
+		}
+		if (isbig) {
+			do append16bitBig(b);
+		} else {
+			do append16bit(b);
+		}
+		return;
+	}
+
+	method void appendUtf8(int codepoint) {
+		if (codepoint < 128) {
+			do appendByte(codepoint);
+			return;
+		}
+		// FIXME
+		return;	
+	}
+
+	method void appendUtf16(int codepoint) {
+		if (codepoint < 65536) {
+			do append16bit(codepoint);
+			return;
+		}
+		// FIXME
+		return;	
+	}
+
+	method void appendNativeChar(int codepoint) {
+		if (iswin) {
+			do appendUtf16(codepoint);
+		} else {
+			do appendUtf8(codepoint);
+		}
+		return;
+	}
+
+	method Array getStringNativePointer() {
+		var Array b, c;
+		let b = buf;
+		let c = string;
+//#c 	b = b * sizeof(var) + c - c;
+//#py 	b = c
+		return b;
+	}
+
+	method void setStringToNative(String name) {
+		var int i, l, c, p;
+		var Array n;
+		var Bytes b;
+	
+		let b = this;
+		let pos = 0;
+		let n = string;
+//#py 	n = ""
+		let l = name.length();
+		if (l < 0) {
+			return;
+		}
+		let i = 0;
+		while (i < l) {
+			let c = name.charAt(i);
+			do b.appendNativeChar(c);
+//#py 		n = n + chr(c) 
+			let i = i + 1;
+		}
+		let string = n;
+		let p = pos;
+		do b.appendNativeChar(0);
+		let pos = p;
+		return;
+	}
+
+}
+

@@ -1,0 +1,565 @@
+/*
+ *                     jack public domain compiler
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+// https://github.com/nothings/stb/
+
+class Gif {
+	field File fd;
+	field Array in;
+	field int in_pos;
+	
+	field int w;	// int32
+	field int h;	// int32
+	field Buffer out;	// byte * // 4 components
+	field Buffer background;	// byte * 
+	field Buffer history;	// byte *
+	field int flags;	// int32
+	field int bgindex;	// int32
+	field int ratio;	// int32
+	field int transparent;	// int32
+	field int eflags;	// int32
+	field Array pal;	// byte[256][4]
+	field Array lpal;	// byte[256][4]
+	field Array codes;	// gif_lzw[8192]
+	field Array color_table;	// byte *
+	field int parse;	// int32
+	field int step;	// int32
+	field int lflags;	// int32
+	field int start_x;	// int32
+	field int start_y;	// int32
+	field int max_x;	// int32
+	field int max_y;	// int32
+	field int cur_x;	// int32
+	field int cur_y;	// int32
+	field int line_size;	// int32
+	field int delay;	// int32
+	field int version;	// byte
+	field int comp;		// byte
+	
+	constructor Gif new() {
+		var int i;
+		let in_pos = 0;
+		let fd = 0;
+		let in = 0;
+
+		let w = 0;	// int32
+		let h = 0;	// int32
+		let out = null;
+		let background = null;	// byte * 
+		let history = null;	// byte *
+		let flags = 0;	// int32
+		let bgindex = 0;	// int32
+		let ratio = 0;	// int32
+		let transparent = 0;	// int32
+		let eflags = 0;	// int32
+		let pal = Array.new(256);	// byte[256][4]
+		let lpal = Array.new(256);	// byte[256][4]
+		let i = 0;
+		while (i < 256) {
+			let pal[i] = 0;	
+			let lpal[i] = 0;	
+			let i = i + 1;
+		}
+		let codes = Array.new(8192);
+		let version = 0;
+		let comp = 0;
+		let i = 0;
+		while (i < 8192) {
+			let codes[i] = GifLzw.new();	
+			let i = i + 1;
+		}
+		let color_table = null;	
+		let parse = 0;
+		let step = 0;	
+		let lflags = 0;	
+		let start_x = 0;
+		let start_y = 0;
+		let max_x = 0;	
+		let max_y = 0;
+		let cur_x = 0;	
+		let cur_y = 0;	
+		let line_size = 0;
+		let delay = 0;
+		return this;
+	}
+
+	method void dispose() {
+		var int i;
+		var GifLzw g;
+		if (fd) {
+			do fd.dispose();
+		}
+		if (out) {
+			do out.dispose();
+			do history.dispose();
+			do background.dispose();
+		}
+		do pal.dispose();
+		let i = 0;
+		while (i < 8192) {
+			let g = codes[i];
+			do g.dispose();
+			let i = i + 1;
+		}
+		do codes.dispose();
+		do Memory.deAlloc(this);
+		return;
+	}
+
+	method int get8() {
+		var int r;
+		if (fd) {
+			return fd.readByte();
+		}
+		if (in) {
+			let r = in[in_pos]; // possible buffer overflow
+			let in_pos = in_pos + 1;
+			return r;
+		}
+		return -1;
+	}
+
+	method int get16le() {
+		var int r;
+		let r = get8();
+		let r = r + (get8() * 256);
+		return r;
+	}
+
+	method void parseColortable(Array pal_, int num_entries, int transp) {
+		var int i, n, o;
+		let i = 0;
+		
+		while (i < num_entries) {
+			let n = get8() * 65536;
+			let n = n + (get8() * 256);
+			let n = n + get8();
+			if (transp = i) {
+				let o = 255;
+				let n = n + (o * 16777216); 
+			}
+			let pal_[i] = n;
+/*
+			do Output.printString("		let map[");
+			do Output.printInt(i);
+			do Output.printString("] = ");
+			do Output.printInt(n);
+			do Output.printString(";");
+			do Output.println();
+*/
+			let i = i + 1;
+		}
+		return;
+	}
+
+	method boolean header() {
+		if (testRaw()) {
+			let w = get16le();	
+			let h = get16le();	
+			let flags = get8();	
+			let bgindex = get8();	
+			let ratio = get8();	
+			let transparent = -1;
+			if ((w > 100000) | (h > 10000)) {
+				return false;
+			}
+			let comp = 4;
+				
+			if (flags & 128) {	
+				do parseColortable(pal, 
+					Math.shiftLeft(2, (flags&7)), -1);
+			}
+			return true;
+		}
+
+		return false;
+	}
+
+	method boolean testRaw() {
+		if ((get8()=71) & (get8()=73) & (get8()=70) & (get8()=56)) {
+			// "GIF8"
+			let version = get8();
+			if ((version = 55) | (version = 57)) {
+				if (get8()=97) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	method void outGifCode(int code) {
+		var int idx;
+		var GifLzw g;
+
+		let g = codes[code];
+		if (g.getPrefix() > (-1)) {
+			do outGifCode(g.getPrefix());
+		}
+		if (cur_y > (max_y - 1)) {
+			return;
+		}
+
+		let idx = cur_x + cur_y;
+		do history.setAt(idx, 1);
+		do out.setAt(idx, color_table[g.getSuffix()]);
+		//do error(g.getSuffix(),color_table[g.getSuffix()],"  KKK");
+		let cur_x = cur_x + 1;
+	
+		if (cur_x > (max_x - 1)) {
+			let cur_x = start_x;
+			let cur_y = cur_y + step;
+			while ((cur_y > (max_y - 1)) & (parse > 0)) {
+				let step = Math.shiftLeft(1, parse) 
+					+ line_size;
+				let cur_y = start_y + 
+					Math.shiftRight(step, 1);
+				let parse = parse - 1;
+			}
+		}
+		return;
+	}
+
+	method void skip(int len) {
+		while (len > 0) {
+			let len = len -1;
+			do get8();
+		}
+		return;
+	}
+
+	method Buffer processGifRaster() {
+		var int lzw_cs;
+		var int len;
+		var int init_code;
+		var int first;
+		var int codesize,codemask,avail,oldcode,bits,valid_bits,clear;
+		var GifLzw p;
+		var GifLzw g;
+		var int code_;
+
+		let oldcode = 0;
+		let lzw_cs = get8();
+		if (lzw_cs > 12) {
+			return null;
+		}
+		let clear = Math.shiftLeft(1, lzw_cs);
+		let first = 1;
+		let codesize = lzw_cs + 1;
+		let codemask = Math.shiftLeft(1, codesize) - 1;
+		let bits = 0;
+		let valid_bits = 0;
+		let init_code = 0;
+		while (init_code < clear ) {
+			let g = codes[init_code];
+			do g.setPrefix(-1);
+			do g.setFirst(init_code);
+			do g.setSuffix(init_code);
+			let init_code = init_code + 1;
+		}
+
+		let avail = clear + 2;
+		let oldcode = -1;
+		let len = 0;
+		while (true) {
+			if (valid_bits < codesize) {
+				if (len = 0) {
+					let len = get8();
+					if (len = 0) {
+						return out;
+					}
+				}
+				let len = len - 1;
+				let bits = bits | Math.shiftLeft(
+					get8(), valid_bits);
+				let valid_bits = valid_bits + 8;
+			} else {
+				let code_ = bits & codemask;
+				let bits = Math.shiftRight(bits, codesize);
+ 				let valid_bits = valid_bits - codesize;
+				if (code_ = clear) {
+					let codesize = lzw_cs + 1;
+					let codemask = Math.shiftLeft(
+						1, codesize) - 1;
+					let avail = clear + 2;
+					let oldcode = -1;
+					let first = 0;
+				} else { if (code_ = (clear + 1)) {
+					do skip(len);
+					let len = get8();
+					while (len > 0) {
+						do skip(len);
+						let len = get8();
+					}
+					return out;
+				} else { if (code_ < (avail + 1)) {
+					if (first) {
+						return null; // no clear code
+					}
+					if (oldcode > -1) {
+						let p = codes[avail];
+						let avail = avail + 1;
+						if (avail > 8192) {
+							return null; //too many
+						}
+						do p.setPrefix(oldcode);
+						let g = codes[oldcode];
+						do p.setFirst(g.getFirst());
+						if (code_ = avail) {
+							do p.setSuffix(
+								p.getFirst());
+						} else {
+							let g = codes[code_];
+							do p.setSuffix(
+								g.getFirst());
+						}
+					} else { if (code_ = avail) {
+						return null; // illegal code
+					}}
+
+					do outGifCode(code_);
+					if (((avail & codemask) = 0) &
+						(avail < 4096)) 
+					{
+						let codesize = codesize + 1;
+						let codemask = Math.shiftLeft(
+							1, codesize) - 1;
+					} 
+					let oldcode = code_;
+				} else {
+					return null; // illegal code
+				}}}
+			}
+		}
+		return null;
+	}
+
+	method Buffer loadNext(Buffer two_back) {
+		var int dispose_;
+		var int first_frame;
+		var int pi;
+		var int pcount;
+		var int i;
+		var int tag;
+		var int count;
+		var int len;
+		var int ext;
+		var int x_, y_, w_, h_;
+		var Buffer o;
+		var int tmp;
+		var boolean BREAK;
+
+		
+		let o = null;
+		let i = 0;
+		let count = 0;
+		if (out = null) {
+			let pcount = w * h;
+			let out = Buffer.new(pcount, null);
+			let background = Buffer.new(pcount, null);
+			let history = Buffer.new(pcount, null);	
+			while (i < pcount) {
+				do out.setAt(i, 0);
+				do background.setAt(i, 0);
+				do history.setAt(i, 0);
+				let i = i + 1;
+			}
+			let first_frame = 1;
+		} else {
+			let dispose_ = Math.shiftRight((eflags & 28), 2);
+			let pcount = w * h;
+			if ((dispose_ = 3) & (two_back = null)) {
+				let dispose_ = 2;
+			}
+			if ((dispose_ = 3) & two_back) {
+				let i = 0;
+				while (i < pcount) {
+					do out.setAt(i, two_back.getAt(i));
+					let i = i + 1;
+				}
+			} else { if (dispose_ = 2) {
+				let pi = 0;
+				while (pi < count) {
+					do out.setAt(pi, background.getAt(i));
+					let pi = pi + 1;
+				}
+			}}
+			let i = 0;
+			while (i < pcount) {
+				do background.setAt(i, out.getAt(i));
+				let i = i + 1;
+			}
+		}
+		let i = 0;
+		let pcount = w * h;
+		while (i < pcount) {
+			do history.setAt(i, 0);
+			let i = i + 1;
+		}
+		while (true) {
+			let BREAK = true;
+			let tag = get8();
+			if (tag = 44) {
+				let x_ = get16le();
+				let y_ = get16le();
+				let w_ = get16le();
+				let h_ = get16le();
+				if (((x_ + w_) > w) | ((y_ + h_) > h)) {
+					return null; // bad image desciptor
+				}
+				let line_size = w;
+				let start_x = x_;
+				let start_y = y_ * line_size;
+				let max_x = start_x + w;
+				let max_y = start_y + (h * line_size);
+				let cur_x = start_x;
+				let cur_y = start_y;
+				if (w_ = 0) {
+					let cur_y = max_y;
+				}
+				let lflags = get8();
+				if (lflags & 64) {
+					let step = 2 * line_size; // FIXME is 8 or 2
+					let parse = 3;
+				} else {
+					let step = line_size;
+					let parse = 0;
+				}
+				//do error(w_, lflags, "step");
+				//do Sys.halt();
+				if (lflags & 128) {
+					let tmp = -1;
+					if (eflags & 1) {
+						let tmp = transparent;
+					}
+					do parseColortable(lpal, 
+						Math.shiftLeft(2, 
+							lflags & 7), tmp);
+					let color_table = lpal;
+				} else { if (flags & 128) {
+					let color_table = pal;
+				} else {
+					return null; // missing color table
+				}}
+				let o = processGifRaster();
+				if (o = null) {
+					return null;
+				}
+				let pcount = w * h;
+				if ((false=(first_frame = 0)) & (bgindex > 0)) {
+					let pi = 0;
+					while (pi < pcount) {
+						if (history[pi] = 0) {
+							let pal[bgindex] =
+								pal[bgindex] |
+								4278190080; 
+							do out.setAt(pi,
+							  pal[bgindex]);
+						}
+						let pi = pi + 1;
+					}
+				}
+				return o;
+			} else { if (tag = 33) {
+				let ext = get8();
+				if (ext = 249) {
+					let len = get8();
+					if (len = 4) {
+						let eflags = get8();
+						let delay = 10 * get16le();
+						if (transparent > -1) {
+						    let pal[transparent] =
+							pal[transparent] |
+								4278190080;
+						}
+						if (eflags & 1) {
+						  let transparent = get8();
+						  if (transparent > -1) {
+						     let pal[transparent] =
+							pal[transparent] &
+								4278190080;
+								
+						  } else {
+							do skip(1);
+							let transparent = -1;
+						  }
+						} else {
+							do skip(len);
+							let BREAK = false;
+						}
+					}
+					if (BREAK) {
+						let len = get8();
+						while (false=(len = 0)) {
+							do skip(len);
+							let len = get8();
+						}
+						let BREAK = false;
+					}
+				
+				}
+			} else { if (tag = 59) {
+				return o;
+			} else {
+				let i = i;
+				return null; // unknown code
+			}}}
+		}
+
+		return out;
+	}
+
+	method void error(int e, int d, String a) {
+		do Output.printString(a);
+		do Output.printInt(e);
+		do Output.printString(" ");
+		do Output.printInt(d);
+		do Output.println();
+		return;
+	}
+
+	method Buffer loadMain() {
+		var Buffer o;
+		let o = null;
+		if (header()) {
+			let o = loadNext(null);
+		}
+		return o;
+	}
+
+	method int getW() {
+		return w;
+	}
+
+	method int getH() {
+		return h;
+	}
+
+	method Buffer readFile(String f) {
+		var Buffer r;
+		let fd = File.new(f, false);
+		let r = loadMain();
+		do fd.dispose();
+		let fd = 0;
+		return r;
+	}
+
+	method void WriteFile(String f) {
+		return;
+	}
+
+	method Array readArray(Array a) {
+		return 0;
+	}
+
+	method void WriteArray(Array src, Array dest) {
+		return;
+	}
+}

@@ -1,0 +1,195 @@
+/*
+ *                         jack standard library 
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Screen {
+	static boolean color;
+
+	function void init() {
+		let color = true;
+//#py 	global tk
+//#py 	tk = None
+		return;
+	}
+
+	function void deInit() {
+		return;
+	}
+
+	function void clearScreen() {
+		var int i;
+		let i = 16384;
+		while (i < 24576) {
+			do Memory.poke(i, 0);
+			let i = i + 1;
+		}
+		//do Screen.setColor(true);
+//#c 	puts("\033[2J");
+/*#py
+ 	global tk
+	if (tk == None):
+		tk = tkinter.Tk()
+		p = tkinter.PhotoImage(file ="screen.gif")
+		lbl = tkinter.Label(tk, image = p)
+		lbl.image = p
+ 		lbl.grid(row=0, column=0)
+#*/
+		return;
+	}
+
+	function void setColor(boolean b) {
+		let color = b;
+		return;
+	}
+
+	function void drawPixel(int x, int y) {
+		var int b, i;
+		var int r, p;
+		let i = (x / 16) + (y * (512 / 16)) + 16384;
+		let b = Memory.peek(i);
+		let r = x - ((x / 16) * 16);
+		let p = 1;
+		while (r > 0) {
+			let p = p * 2;
+			let r = r -1;
+		}
+		if (color) {
+			let b = b | p;
+		} else {
+			let b = b & ~p;
+		}
+		do Memory.poke(i, b); 
+		return;
+	}
+
+	function void drawLine(int x, int y, int x2, int y2) {
+		var int a, b, dx, dy, ax, ay;
+		var int adyMinusbdx;
+		let dx = x2 - x;
+		let dy = y2 - y;
+
+		if (dx = 0) {
+			if (y > y2) {
+				let a = y2;
+				let y2 = y;
+				let y = a;
+			}
+			let b = y;
+			let y2 = y2 + 1;
+			do Screen.drawPixel(x, b);
+			while (b < y2) {
+				let b = b + 1;
+				do Screen.drawPixel(x, b);
+			}
+			return;
+		}
+
+		if (dy = 0) {
+			if (x > x2) {
+				let a = x2;
+				let x2 = x;
+				let x = a;
+			}
+			let a = x;
+			let x2 = x2 + 1;
+			do Screen.drawPixel(a, y);
+			while (a < x2) {
+				let a = a + 1;
+				do Screen.drawPixel(a, y);
+			}
+			return;
+		}
+		let ax = 0;
+		let ay = 0;
+		if ((dx < 0) & (dy < 0)) {
+			let dx = -dx;
+			let dy = -dy;
+			let x = x2;
+			let y = y2;
+		} else {if ((dx > 0) & (dy < 0)) {
+			let dy = -dy;
+			let ay = dy;
+		} else {if ((dx < 0) & (dy > 0)) {
+			let dx = -dx;
+			let ax = dx;
+		}}}
+
+		let a = 0;
+		let b = 0;
+		let adyMinusbdx = 0;
+		do Screen.drawPixel(x, y);
+		while ((dx > a) & (dy > b)) {
+			if (adyMinusbdx < 0) {
+				let a = a + 1;
+				let adyMinusbdx = adyMinusbdx + dy;
+			} else {
+				let b = b + 1;
+				let adyMinusbdx = adyMinusbdx - dx;
+			}
+			if (ay) {
+				do Screen.drawPixel(x + a, y - b);
+			} else { if (ax) {
+				do Screen.drawPixel(x - a, y + b);
+			} else { 
+				do Screen.drawPixel(x + a, y + b);
+			}}
+		}
+		return;
+	}
+
+	function void drawRectangle(int x, int y, int x2, int y2) {
+		var int i;
+		let i = y;
+		do Screen.drawLine(x, i, x2, i);
+		while (i < y2) {
+			let i = i + 1;
+			do Screen.drawLine(x, i, x2, i);
+		}
+		return;
+	}
+
+	function void drawCircle(int x, int y, int r) {
+		var int dy;
+		var int s, r2, x0, x1, y0;
+		let dy = -r;
+		if ((r > 181) | (r < 0)) {
+			return;
+		}
+		let r2 = r * r;
+		while (r > dy) {
+			let s = Math.sqrt(r2 - (dy * dy)); 
+			let x0 = x -s;
+			let y0 = y + dy;
+			let x1 = x + s;
+			if (x0 < 0) {
+				let x0 = 0;
+			}
+			if (x0 > 511) {
+				let x0 = 511;
+			}
+			if (x1 < 0) {
+				let x1 = 0;
+			}
+			if (x1 > 511) {
+				let x1 = 511;
+			}
+			if (y0 < 0) {
+				let y0 = 0;
+			}
+			if (y0 > 255) {
+				let y0 = 255;
+			}
+			do Screen.drawLine(x0, y0, x1, y0);
+			let dy = dy + 1;
+		}
+		return;
+	}
+
+}
+

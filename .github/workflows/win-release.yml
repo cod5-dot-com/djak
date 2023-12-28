@@ -1,0 +1,41 @@
+name: win-release
+on:
+  workflow_run:
+    workflows: ["jack-release"]
+    types:
+      - completed
+jobs:
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: microsoft/setup-msbuild@v1
+      - name: Build x64
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: msbuild /m /p:Configuration=Release /p:Platform=x64
+      - name: Build x86
+        working-directory: ${{env.GITHUB_WORKSPACE}}
+        run: msbuild /m /p:Configuration=Release /p:Platform=x86
+      - uses: jossef/action-latest-release-info@v1.1.0
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Zip
+        shell: cmd
+        run: call .\release.cmd
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./jack-win32.zip
+          asset_name: jack-win32.zip
+          asset_content_type: application/zip
+      - uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./jack-win64.zip
+          asset_name: jack-win64.zip
+          asset_content_type: application/zip

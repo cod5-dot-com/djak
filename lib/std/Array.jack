@@ -1,0 +1,23 @@
+/*
+ *                         jack standard library 
+ *
+ *                      15 may  MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+class Array {
+	function Array new(int size) {
+		var Array a;
+		let a = Memory.alloc(size);
+		return a;
+	}
+
+	method void dispose() {
+		do Memory.deAlloc(this);
+		return;
+	}
+
+}
+

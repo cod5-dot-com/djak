@@ -1,0 +1,678 @@
+//  !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
+class Font {
+	field Array fnt;
+	constructor Font new() {
+		let fnt = Array.new(570);
+		//   (32)
+		let fnt[0] = 0;
+		let fnt[1] = 0;
+		let fnt[2] = 0;
+		let fnt[3] = 0;
+		let fnt[4] = 0;
+		let fnt[5] = 0;
+		// ! (33)
+		let fnt[6] = 6144;
+		let fnt[7] = 6168;
+		let fnt[8] = 6168;
+		let fnt[9] = 6144;
+		let fnt[10] = 24;
+		let fnt[11] = 0;
+		// " (34)
+		let fnt[12] = 5140;
+		let fnt[13] = 20;
+		let fnt[14] = 0;
+		let fnt[15] = 0;
+		let fnt[16] = 0;
+		let fnt[17] = 0;
+		// # (35)
+		let fnt[18] = 20480;
+		let fnt[19] = -472;
+		let fnt[20] = 32548;
+		let fnt[21] = 2580;
+		let fnt[22] = 0;
+		let fnt[23] = 0;
+		// $ (36)
+		let fnt[24] = 11272;
+		let fnt[25] = 2634;
+		let fnt[26] = 10268;
+		let fnt[27] = 6697;
+		let fnt[28] = 8;
+		let fnt[29] = 0;
+		// % (37)
+		let fnt[30] = 17920;
+		let fnt[31] = 5673;
+		let fnt[32] = 13320;
+		let fnt[33] = 12618;
+		let fnt[34] = 0;
+		let fnt[35] = 0;
+		// & (38)
+		let fnt[36] = 17436;
+		let fnt[37] = 9284;
+		let fnt[38] = 16924;
+		let fnt[39] = -1660;
+		let fnt[40] = 0;
+		let fnt[41] = 0;
+		// ' (39)
+		let fnt[42] = 4096;
+		let fnt[43] = 4112;
+		let fnt[44] = 0;
+		let fnt[45] = 0;
+		let fnt[46] = 0;
+		let fnt[47] = 0;
+		// ( (40)
+		let fnt[48] = 1032;
+		let fnt[49] = 514;
+		let fnt[50] = 513;
+		let fnt[51] = 1026;
+		let fnt[52] = 8;
+		let fnt[53] = 0;
+		// ) (41)
+		let fnt[54] = 513;
+		let fnt[55] = 1028;
+		let fnt[56] = 1032;
+		let fnt[57] = 516;
+		let fnt[58] = 1;
+		let fnt[59] = 0;
+		// * (42)
+		let fnt[60] = 0;
+		let fnt[61] = 18688;
+		let fnt[62] = 7210;
+		let fnt[63] = 10780;
+		let fnt[64] = 73;
+		let fnt[65] = 0;
+		// + (43)
+		let fnt[66] = 0;
+		let fnt[67] = 2056;
+		let fnt[68] = 2110;
+		let fnt[69] = 8;
+		let fnt[70] = 0;
+		let fnt[71] = 0;
+		// , (44)
+		let fnt[72] = 0;
+		let fnt[73] = 0;
+		let fnt[74] = 0;
+		let fnt[75] = 6144;
+		let fnt[76] = 1032;
+		let fnt[77] = 0;
+		// - (45)
+		let fnt[78] = 0;
+		let fnt[79] = 0;
+		let fnt[80] = 124;
+		let fnt[81] = 0;
+		let fnt[82] = 0;
+		let fnt[83] = 0;
+		// . (46)
+		let fnt[84] = 0;
+		let fnt[85] = 0;
+		let fnt[86] = 0;
+		let fnt[87] = 6144;
+		let fnt[88] = 24;
+		let fnt[89] = 0;
+		// / (47)
+		let fnt[90] = 0;
+		let fnt[91] = 8256;
+		let fnt[92] = 2064;
+		let fnt[93] = 516;
+		let fnt[94] = 1;
+		let fnt[95] = 0;
+		// 0 (48)
+		let fnt[96] = 23552;
+		let fnt[97] = 12834;
+		let fnt[98] = 9770;
+		let fnt[99] = 7458;
+		let fnt[100] = 0;
+		let fnt[101] = 0;
+		// 1 (49)
+		let fnt[102] = 6144;
+		let fnt[103] = 4112;
+		let fnt[104] = 4112;
+		let fnt[105] = 4112;
+		let fnt[106] = 0;
+		let fnt[107] = 0;
+		// 2 (50)
+		let fnt[108] = 15360;
+		let fnt[109] = 8228;
+		let fnt[110] = 3088;
+		let fnt[111] = 15876;
+		let fnt[112] = 0;
+		let fnt[113] = 0;
+		// 3 (51)
+		let fnt[114] = 15360;
+		let fnt[115] = 8224;
+		let fnt[116] = 8248;
+		let fnt[117] = 15392;
+		let fnt[118] = 0;
+		let fnt[119] = 0;
+		// 4 (52)
+		let fnt[120] = 4096;
+		let fnt[121] = 5144;
+		let fnt[122] = 15890;
+		let fnt[123] = 4112;
+		let fnt[124] = 0;
+		let fnt[125] = 0;
+		// 5 (53)
+		let fnt[126] = 15360;
+		let fnt[127] = 7172;
+		let fnt[128] = 8244;
+		let fnt[129] = 15396;
+		let fnt[130] = 0;
+		let fnt[131] = 0;
+		// 6 (54)
+		let fnt[132] = 12288;
+		let fnt[133] = 3080;
+		let fnt[134] = 16956;
+		let fnt[135] = 15426;
+		let fnt[136] = 0;
+		let fnt[137] = 0;
+		// 7 (55)
+		let fnt[138] = 15872;
+		let fnt[139] = 12320;
+		let fnt[140] = 6160;
+		let fnt[141] = 2056;
+		let fnt[142] = 0;
+		let fnt[143] = 0;
+		// 8 (56)
+		let fnt[144] = 15360;
+		let fnt[145] = 9282;
+		let fnt[146] = 16956;
+		let fnt[147] = 15426;
+		let fnt[148] = 0;
+		let fnt[149] = 0;
+		// 9 (57)
+		let fnt[150] = 15360;
+		let fnt[151] = 9252;
+		let fnt[152] = 4156;
+		let fnt[153] = 2072;
+		let fnt[154] = 0;
+		let fnt[155] = 0;
+		// : (58)
+		let fnt[156] = 0;
+		let fnt[157] = 6144;
+		let fnt[158] = 24;
+		let fnt[159] = 6144;
+		let fnt[160] = 24;
+		let fnt[161] = 0;
+		// ; (59)
+		let fnt[162] = 0;
+		let fnt[163] = 6144;
+		let fnt[164] = 24;
+		let fnt[165] = 6144;
+		let fnt[166] = 1032;
+		let fnt[167] = 0;
+		// < (60)
+		let fnt[168] = 16384;
+		let fnt[169] = 1040;
+		let fnt[170] = 1025;
+		let fnt[171] = 16400;
+		let fnt[172] = 0;
+		let fnt[173] = 0;
+		// = (61)
+		let fnt[174] = 0;
+		let fnt[175] = 0;
+		let fnt[176] = 126;
+		let fnt[177] = 126;
+		let fnt[178] = 0;
+		let fnt[179] = 0;
+		// > (62)
+		let fnt[180] = 0;
+		let fnt[181] = 1025;
+		let fnt[182] = 16400;
+		let fnt[183] = 1040;
+		let fnt[184] = 1;
+		let fnt[185] = 0;
+		// ? (63)
+		let fnt[186] = 7176;
+		let fnt[187] = 4146;
+		let fnt[188] = 2072;
+		let fnt[189] = 6144;
+		let fnt[190] = 24;
+		let fnt[191] = 0;
+		// @ (64)
+		let fnt[192] = 15360;
+		let fnt[193] = -25278;
+		let fnt[194] = 31141;
+		let fnt[195] = 15362;
+		let fnt[196] = 0;
+		let fnt[197] = 0;
+		// A (65)
+		let fnt[198] = 3072;
+		let fnt[199] = 7180;
+		let fnt[200] = 7702;
+		let fnt[201] = 9010;
+		let fnt[202] = 0;
+		let fnt[203] = 0;
+		// B (66)
+		let fnt[204] = 15872;
+		let fnt[205] = 13862;
+		let fnt[206] = 9790;
+		let fnt[207] = 15910;
+		let fnt[208] = 0;
+		let fnt[209] = 0;
+		// C (67)
+		let fnt[210] = 15376;
+		let fnt[211] = 1540;
+		let fnt[212] = 1542;
+		let fnt[213] = 15428;
+		let fnt[214] = 0;
+		let fnt[215] = 0;
+		// D (68)
+		let fnt[216] = 15872;
+		let fnt[217] = 26150;
+		let fnt[218] = 26182;
+		let fnt[219] = 15910;
+		let fnt[220] = 0;
+		let fnt[221] = 0;
+		// E (69)
+		let fnt[222] = 15872;
+		let fnt[223] = 1542;
+		let fnt[224] = 1598;
+		let fnt[225] = 15878;
+		let fnt[226] = 0;
+		let fnt[227] = 0;
+		// F (70)
+		let fnt[228] = 15872;
+		let fnt[229] = 1542;
+		let fnt[230] = 1598;
+		let fnt[231] = 1542;
+		let fnt[232] = 0;
+		let fnt[233] = 0;
+		// G (71)
+		let fnt[234] = 7680;
+		let fnt[235] = 770;
+		let fnt[236] = 13115;
+		let fnt[237] = 7714;
+		let fnt[238] = 0;
+		let fnt[239] = 0;
+		// H (72)
+		let fnt[240] = 26112;
+		let fnt[241] = 26214;
+		let fnt[242] = 26238;
+		let fnt[243] = 26214;
+		let fnt[244] = 0;
+		let fnt[245] = 0;
+		// I (73)
+		let fnt[246] = 4096;
+		let fnt[247] = 4112;
+		let fnt[248] = 4112;
+		let fnt[249] = 4112;
+		let fnt[250] = 0;
+		let fnt[251] = 0;
+		// J (74)
+		let fnt[252] = 8192;
+		let fnt[253] = 8224;
+		let fnt[254] = 8736;
+		let fnt[255] = 7204;
+		let fnt[256] = 0;
+		let fnt[257] = 0;
+		// K (75)
+		let fnt[258] = 13056;
+		let fnt[259] = 3867;
+		let fnt[260] = 2823;
+		let fnt[261] = 13075;
+		let fnt[262] = 0;
+		let fnt[263] = 0;
+		// L (76)
+		let fnt[264] = 1536;
+		let fnt[265] = 1542;
+		let fnt[266] = 1542;
+		let fnt[267] = 15878;
+		let fnt[268] = 0;
+		let fnt[269] = 0;
+		// M (77)
+		let fnt[270] = 17152;
+		let fnt[271] = 26467;
+		let fnt[272] = 24423;
+		let fnt[273] = 23387;
+		let fnt[274] = 0;
+		let fnt[275] = 0;
+		// N (78)
+		let fnt[276] = 17920;
+		let fnt[277] = 20046;
+		let fnt[278] = 30294;
+		let fnt[279] = 26214;
+		let fnt[280] = 0;
+		let fnt[281] = 0;
+		// O (79)
+		let fnt[282] = 7680;
+		let fnt[283] = 8994;
+		let fnt[284] = 8995;
+		let fnt[285] = 7714;
+		let fnt[286] = 0;
+		let fnt[287] = 0;
+		// P (80)
+		let fnt[288] = 15872;
+		let fnt[289] = 9766;
+		let fnt[290] = 1566;
+		let fnt[291] = 1542;
+		let fnt[292] = 0;
+		let fnt[293] = 0;
+		// Q (81)
+		let fnt[294] = 7688;
+		let fnt[295] = 8994;
+		let fnt[296] = 8995;
+		let fnt[297] = 15922;
+		let fnt[298] = 0;
+		let fnt[299] = 0;
+		// R (82)
+		let fnt[300] = 15872;
+		let fnt[301] = 9766;
+		let fnt[302] = 5662;
+		let fnt[303] = 9782;
+		let fnt[304] = 0;
+		let fnt[305] = 0;
+		// S (83)
+		let fnt[306] = 15360;
+		let fnt[307] = 3078;
+		let fnt[308] = 8216;
+		let fnt[309] = 15394;
+		let fnt[310] = 0;
+		let fnt[311] = 0;
+		// T (84)
+		let fnt[312] = 32256;
+		let fnt[313] = 4112;
+		let fnt[314] = 4112;
+		let fnt[315] = 4112;
+		let fnt[316] = 0;
+		let fnt[317] = 0;
+		// U (85)
+		let fnt[318] = 17920;
+		let fnt[319] = 17990;
+		let fnt[320] = 17990;
+		let fnt[321] = 15396;
+		let fnt[322] = 0;
+		let fnt[323] = 0;
+		// V (86)
+		let fnt[324] = 17920;
+		let fnt[325] = 9316;
+		let fnt[326] = 14380;
+		let fnt[327] = 6168;
+		let fnt[328] = 0;
+		let fnt[329] = 0;
+		// W (87)
+		let fnt[330] = -9472;
+		let fnt[331] = 23131;
+		let fnt[332] = 30302;
+		let fnt[333] = 26214;
+		let fnt[334] = 0;
+		let fnt[335] = 0;
+		// X (88)
+		let fnt[336] = 25600;
+		let fnt[337] = 6180;
+		let fnt[338] = 6168;
+		let fnt[339] = 26148;
+		let fnt[340] = 0;
+		let fnt[341] = 0;
+		// Y (89)
+		let fnt[342] = 9216;
+		let fnt[343] = 6196;
+		let fnt[344] = 6168;
+		let fnt[345] = 6168;
+		let fnt[346] = 0;
+		let fnt[347] = 0;
+		// Z (90)
+		let fnt[348] = 15872;
+		let fnt[349] = 6160;
+		let fnt[350] = 1032;
+		let fnt[351] = 15878;
+		let fnt[352] = 0;
+		let fnt[353] = 0;
+		// [ (91)
+		let fnt[354] = 3096;
+		let fnt[355] = 3084;
+		let fnt[356] = 3084;
+		let fnt[357] = 3084;
+		let fnt[358] = 24;
+		let fnt[359] = 0;
+		// \ (92)
+		let fnt[360] = 1028;
+		let fnt[361] = 2056;
+		let fnt[362] = 4120;
+		let fnt[363] = 8240;
+		let fnt[364] = 0;
+		let fnt[365] = 0;
+		// ] (93)
+		let fnt[366] = 6168;
+		let fnt[367] = 4112;
+		let fnt[368] = 4112;
+		let fnt[369] = 6160;
+		let fnt[370] = 24;
+		let fnt[371] = 0;
+		// ^ (94)
+		let fnt[372] = 7168;
+		let fnt[373] = 20;
+		let fnt[374] = 0;
+		let fnt[375] = 0;
+		let fnt[376] = 0;
+		let fnt[377] = 0;
+		// _ (95)
+		let fnt[378] = 0;
+		let fnt[379] = 0;
+		let fnt[380] = 0;
+		let fnt[381] = 0;
+		let fnt[382] = 126;
+		let fnt[383] = 0;
+		// ` (96)
+		let fnt[384] = 2052;
+		let fnt[385] = 0;
+		let fnt[386] = 0;
+		let fnt[387] = 0;
+		let fnt[388] = 0;
+		let fnt[389] = 0;
+		// a (97)
+		let fnt[390] = 0;
+		let fnt[391] = 7168;
+		let fnt[392] = 7704;
+		let fnt[393] = 7190;
+		let fnt[394] = 0;
+		let fnt[395] = 0;
+		// b (98)
+		let fnt[396] = 1536;
+		let fnt[397] = 15886;
+		let fnt[398] = 9766;
+		let fnt[399] = 7734;
+		let fnt[400] = 0;
+		let fnt[401] = 0;
+		// c (99)
+		let fnt[402] = 0;
+		let fnt[403] = 7176;
+		let fnt[404] = 518;
+		let fnt[405] = 7174;
+		let fnt[406] = 0;
+		let fnt[407] = 0;
+		// d (100)
+		let fnt[408] = 8192;
+		let fnt[409] = 15416;
+		let fnt[410] = 12854;
+		let fnt[411] = 15414;
+		let fnt[412] = 0;
+		let fnt[413] = 0;
+		// e (101)
+		let fnt[414] = 0;
+		let fnt[415] = 7176;
+		let fnt[416] = 15926;
+		let fnt[417] = 7174;
+		let fnt[418] = 0;
+		let fnt[419] = 0;
+		// f (102)
+		let fnt[420] = 6144;
+		let fnt[421] = 6168;
+		let fnt[422] = 2056;
+		let fnt[423] = 2056;
+		let fnt[424] = 0;
+		let fnt[425] = 0;
+		// g (103)
+		let fnt[426] = 0;
+		let fnt[427] = 15368;
+		let fnt[428] = 12854;
+		let fnt[429] = 15414;
+		let fnt[430] = 7216;
+		let fnt[431] = 0;
+		// h (104)
+		let fnt[432] = 1536;
+		let fnt[433] = 7694;
+		let fnt[434] = 9766;
+		let fnt[435] = 9766;
+		let fnt[436] = 0;
+		let fnt[437] = 0;
+		// i (105)
+		let fnt[438] = 4096;
+		let fnt[439] = 6144;
+		let fnt[440] = 6168;
+		let fnt[441] = 6168;
+		let fnt[442] = 0;
+		let fnt[443] = 0;
+		// j (106)
+		let fnt[444] = 4096;
+		let fnt[445] = 4096;
+		let fnt[446] = 4112;
+		let fnt[447] = 4112;
+		let fnt[448] = 7184;
+		let fnt[449] = 0;
+		// k (107)
+		let fnt[450] = 1536;
+		let fnt[451] = 7686;
+		let fnt[452] = 3598;
+		let fnt[453] = 5662;
+		let fnt[454] = 0;
+		let fnt[455] = 0;
+		// l (108)
+		let fnt[456] = 3072;
+		let fnt[457] = 3084;
+		let fnt[458] = 3084;
+		let fnt[459] = 2060;
+		let fnt[460] = 0;
+		let fnt[461] = 0;
+		// m (109)
+		let fnt[462] = 0;
+		let fnt[463] = 32548;
+		let fnt[464] = 19291;
+		let fnt[465] = 19275;
+		let fnt[466] = 0;
+		let fnt[467] = 0;
+		// n (110)
+		let fnt[468] = 0;
+		let fnt[469] = 7688;
+		let fnt[470] = 9766;
+		let fnt[471] = 9766;
+		let fnt[472] = 0;
+		let fnt[473] = 0;
+		// o (111)
+		let fnt[474] = 0;
+		let fnt[475] = 7176;
+		let fnt[476] = 9766;
+		let fnt[477] = 7206;
+		let fnt[478] = 0;
+		let fnt[479] = 0;
+		// p (112)
+		let fnt[480] = 0;
+		let fnt[481] = 15880;
+		let fnt[482] = 9766;
+		let fnt[483] = 7734;
+		let fnt[484] = 1542;
+		let fnt[485] = 0;
+		// q (113)
+		let fnt[486] = 0;
+		let fnt[487] = 15368;
+		let fnt[488] = 12854;
+		let fnt[489] = 15414;
+		let fnt[490] = 8224;
+		let fnt[491] = 0;
+		// r (114)
+		let fnt[492] = 0;
+		let fnt[493] = 7184;
+		let fnt[494] = 3084;
+		let fnt[495] = 3084;
+		let fnt[496] = 0;
+		let fnt[497] = 0;
+		// s (115)
+		let fnt[498] = 0;
+		let fnt[499] = 7176;
+		let fnt[500] = 7174;
+		let fnt[501] = 7184;
+		let fnt[502] = 0;
+		let fnt[503] = 0;
+		// t (116)
+		let fnt[504] = 2048;
+		let fnt[505] = 6152;
+		let fnt[506] = 2056;
+		let fnt[507] = 6152;
+		let fnt[508] = 0;
+		let fnt[509] = 0;
+		// u (117)
+		let fnt[510] = 0;
+		let fnt[511] = 9728;
+		let fnt[512] = 9766;
+		let fnt[513] = 15412;
+		let fnt[514] = 0;
+		let fnt[515] = 0;
+		// v (118)
+		let fnt[516] = 0;
+		let fnt[517] = 13824;
+		let fnt[518] = 5140;
+		let fnt[519] = 2076;
+		let fnt[520] = 0;
+		let fnt[521] = 0;
+		// w (119)
+		let fnt[522] = 0;
+		let fnt[523] = 27392;
+		let fnt[524] = 13870;
+		let fnt[525] = 5686;
+		let fnt[526] = 0;
+		let fnt[527] = 0;
+		// x (120)
+		let fnt[528] = 0;
+		let fnt[529] = 5632;
+		let fnt[530] = 3084;
+		let fnt[531] = 5660;
+		let fnt[532] = 0;
+		let fnt[533] = 0;
+		// y (121)
+		let fnt[534] = 0;
+		let fnt[535] = 9728;
+		let fnt[536] = 9766;
+		let fnt[537] = 15412;
+		let fnt[538] = 7200;
+		let fnt[539] = 0;
+		// z (122)
+		let fnt[540] = 0;
+		let fnt[541] = 7168;
+		let fnt[542] = 2072;
+		let fnt[543] = 7684;
+		let fnt[544] = 0;
+		let fnt[545] = 0;
+		// { (123)
+		let fnt[546] = 6160;
+		let fnt[547] = 2056;
+		let fnt[548] = 2060;
+		let fnt[549] = 6152;
+		let fnt[550] = 16;
+		let fnt[551] = 0;
+		// | (124)
+		let fnt[552] = 6144;
+		let fnt[553] = 6168;
+		let fnt[554] = 6168;
+		let fnt[555] = 6168;
+		let fnt[556] = 0;
+		let fnt[557] = 0;
+		// } (125)
+		let fnt[558] = 6152;
+		let fnt[559] = 4120;
+		let fnt[560] = 4112;
+		let fnt[561] = 6168;
+		let fnt[562] = 8;
+		let fnt[563] = 0;
+		// ~ (126)
+		let fnt[564] = 0;
+		let fnt[565] = 0;
+		let fnt[566] = 60;
+		let fnt[567] = 0;
+		let fnt[568] = 0;
+		let fnt[569] = 0;
+		return this;
+	}
+	method Array get(char c) {
+		var int i;
+		let i = (c - 32) * 6;
+		return fnt + i;
+	}
+}

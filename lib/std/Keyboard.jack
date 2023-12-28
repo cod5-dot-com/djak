@@ -1,0 +1,328 @@
+/*
+ *                         jack standard library 
+ *
+ *                      15 may MMXXI PUBLIC DOMAIN
+ *           The author disclaims copyright to this source code.
+ *
+ *
+ */
+
+
+class Keyboard {
+	function void exit() {
+//#c #ifndef _WIN32
+//#c 	Keyboard__term.c_lflag |= (ICANON | ECHO);
+//#c 	tcsetattr(0, TCSANOW, &Keyboard__term);
+//#c	exit(0);
+//#c #endif
+//#py 	global ts
+//#py 	if (sys.stdin.closed == 0):
+//#py 		termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, ts)
+		return;
+	}
+
+	function void exits(int a, int b) {
+		do Keyboard.exit();
+		return;
+	}
+
+	function void init() {
+/*#c 
+#ifndef _WIN32
+ 	struct sigaction act;
+ 	memset(&act, 0, sizeof(act));
+ 	sigemptyset(&act.sa_mask);
+ 	atexit((void(*)())Keyboard__exits);
+ 	tcgetattr(0, &Keyboard__term);
+ 	act.sa_handler = ((void(*)(int))Keyboard__exits);
+ 	act.sa_flags = 0;
+ 	sigaction(SIGINT, &act, NULL); 
+ 	sigaction(SIGTSTP, &act, NULL); 
+ 	Keyboard__term.c_lflag &= ~(ICANON);
+ 	tcsetattr(0, TCSANOW, &Keyboard__term);
+#endif
+#*/
+
+/*#py 	global keybuf
+	global keyindex
+ 	global ts
+	ts = termios.tcgetattr(sys.stdin.fileno())
+	keybuf=""
+	keyindex = 0;
+	atexit.register(Keyboard__exit)
+	signal.signal(signal.SIGINT, Keyboard__exits) # ctlr + c
+	signal.signal(signal.SIGTSTP, Keyboard__exits) # ctlr + z
+#*/
+		return;
+	}
+
+	function void deInit() {
+		return;
+	}
+
+	function char keyPressed() {
+		var char c;
+		let c = Keyboard.getKey();
+		if (c) {
+			do Memory.poke(24576, c);
+		}
+		return Memory.peek(24576);
+	}
+
+	function char getKey() {
+		var int x;
+
+		let x = Keyboard.getChar();
+		if (x = 10) {
+			return 128; // newline
+		}				
+		if (x = 127) {
+			return 129; //backspace
+		}		
+				
+		if (x = 27) {
+			let x = Keyboard.getChar();
+			if (x = 0) {
+				return 140; // ESC
+			}
+			if (x = 91) {
+				let x = Keyboard.getChar();
+				if (x = 65) {
+					let x = 131; // up
+				}
+				if (x = 66) {
+					let x = 133; // down
+				}
+				if (x = 67) {
+					let x = 132;  // right
+				}
+				if (x = 68) {
+					let x = 130; // left
+				}
+				if (x = 53) {
+					let x = Keyboard.getChar();
+					if (x = 126) {
+						let x = 136; // page up
+					}
+
+				}
+				if (x = 54) {
+					let x = Keyboard.getChar();
+					if (x = 126) {
+						let x = 137; // page down 
+					}
+
+				}
+	
+	
+				if (x = 50) {
+					let x = Keyboard.getChar();
+					if (x = 126) {
+						let x = 138; // insert 
+					}
+					if (x = 52) {
+						let x = Keyboard.getChar();
+						let x = (x - 125) + 150; // 151-152 F11-F12
+					}
+				}
+
+				if (x = 51) {
+					let x = Keyboard.getChar();
+					if (x = 126) {
+						let x = 139; // delete 
+					}
+				}
+	
+
+				if (x = 91) {
+					let x = Keyboard.getChar();
+					if (x = 70) {
+						let x = 135; // end 
+					}
+				}
+	
+				if (x = 91) {
+					let x = Keyboard.getChar();
+					if (x = 72) {
+						let x = 134; // home 
+					}
+				}
+			} else { if (x = 79) {
+				let x = Keyboard.getChar();
+				let x = (x - 80) + 141; // F1-F10
+			}}
+		}
+		return x;
+	}
+
+	function char getChar() {
+		var int x;
+/*#c 
+#ifndef _WIN32
+ 	//fd_set rd;
+ 	int flags;
+ 	flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+ 	fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+ 	//struct timeval tv = {0};
+ 	//tv.tv_usec = 1000;
+ 	//FD_ZERO(&rd);
+ 	//FD_SET(STDIN_FILENO, &rd);
+ 	//x = select(1, &rd, NULL, NULL, &tv);
+	x = getchar();
+ 	//ioctl(STDIN_FILENO, FIONREAD, ((int*)&x)); // crash on linux 64bit
+ 	if (x > 0) {
+ 		x = x;
+ 	} else {
+ 		x = 0;
+ 	}
+ 	//printf("KKEY %d\n",(int) x);
+#else
+ 	x = 0;
+ 	if (_kbhit()) {
+ 		x = _getch();
+ 	}
+#endif
+#*/
+
+//#py 	global keybuf
+//#py 	global keyindex
+//#py 	global ts
+//#py 	global tk
+//#py 	x = 0
+//#py 	if (len(keybuf) > keyindex):
+//#py 		x = ord(keybuf[keyindex])
+//#py 		keyindex = keyindex + 1
+//#py 		return x
+//#py 	if (tk != None):
+//#py 		tk.update()
+//#py 	tty.setcbreak(sys.stdin.fileno())
+//#py 	n = select.select([sys.stdin],[],[],.01)[0]
+//#py 	if (n):
+//#py 		keybuf = sys.stdin.buffer.peek(1)
+//#py 		keybuf = (sys.stdin.read(len(keybuf)))
+//#py 		x = ord(keybuf[0])
+//#py 		keyindex = 1
+//#py 	termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, ts)
+
+		return x;
+	}
+
+	function char readChar() {
+		var char k;
+		let k = Keyboard.keyPressed();
+		while (k = 0) {
+			do Sys.wait(50);
+			let k = Keyboard.keyPressed();
+		}
+		do Memory.poke(24576, 0);
+		while (Keyboard.keyPressed()) {
+			do Sys.wait(50);
+		}
+		do Memory.poke(24576, 0);
+		return k;
+	}
+
+	function String readLine(String message) {
+		var String s;
+		var char k;
+		let s = String.new(256);
+		do Output.printString(message);
+		let k = Keyboard.readChar();
+		while ((k = 10) = false) {
+			let s = s.appendChar(k);
+			let k = Keyboard.readChar();
+		}
+		return s;
+	}
+
+	function int readInt(String message) {
+		var char k;	
+		var int i;
+		do Output.printString(message);
+		let i = 0;
+		let k = Keyboard.readChar();
+		while ((k > 47) & (k < 58)) {
+			let i = (k - 48) + (i * 10);
+			let k = Keyboard.readChar();
+		}
+		return i;
+	}
+
+	function char NEWLINE() {
+		return 128;
+	}
+
+	function char BACKSPACE() {
+		return 129;
+	}
+	function char LEFT_ARROW() {
+		return 130;
+	}
+	function char UP_ARROW() {
+		return 131;
+	}
+	function char RIGHT_ARROW() {
+		return 132;
+	}
+	function char DOWN_ARROW() {
+		return 133;
+	}
+	function char HOME() {
+		return 134;
+	}
+	function char END() {
+		return 135;
+	}
+	function char PAGE_UP() {
+		return 136;
+	}
+	function char PAGE_DOWN() {
+		return 137;
+	}
+	function char INSERT() {
+		return 138;
+	}
+	function char DELETE() {
+		return 139;
+	}
+	function char ESC() {
+		return 140;
+	}
+	function char F1() {
+		return 141;
+	}
+	function char F2() {
+		return 142;
+	}
+	function char F3() {
+		return 143;
+	}
+	function char F4() {
+		return 144;
+	}
+	function char F5() {
+		return 145;
+	}
+	function char F6() {
+		return 146;
+	}
+	function char F7() {
+		return 147;
+	}
+	function char F8() {
+		return 148;
+	}
+	function char F9() {
+		return 149;
+	}
+	function char F10() {
+		return 150;
+	}
+	function char F11() {
+		return 151;
+	}
+	function char F12() {
+		return 152;
+	}
+}
+

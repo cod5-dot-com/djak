@@ -1,0 +1,9 @@
+
+class Main {
+	function void main()
+	{
+		do Output.printString("Héllo World!");
+		do Output.println();
+		return;
+	}
+}
