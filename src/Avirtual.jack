@@ -1,0 +1,48 @@
+
+class Avirtual {
+field string _class;
+field Amember _memb;
+field Avirtual next;
+
+constructor Avirtual new(in Amember memb_, in string class_)
+{
+	_class := class_;
+	_memb := memb_;
+	next := null;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.free(this);
+	return;
+}
+
+method void set_next(in Avirtual n)
+{
+	next := n;
+	return;
+}
+
+method Avirtual get_next()
+{
+	return next;
+}
+
+method string get_class_name()
+{
+	return _class;
+}
+
+method Amember get_member()
+{
+	return _memb;
+}
+
+method Amember get_member_name()
+{
+	return _memb.get_name_string();
+}
+
+
+} // class

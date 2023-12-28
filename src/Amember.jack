@@ -1,0 +1,156 @@
+
+class Amember {
+field int kind;
+field int type;
+field Atoken type_id;
+field Atoken name;
+field Atoken initial_value;
+field int index;
+field buffer params;
+field buffer vars;
+field buffer body;
+field buffer ir;
+
+constructor Amember new(in int kind_, in int type_, 
+	in Atoken type_id_, in Atoken name_)
+{
+	kind := kind_;
+	type := type_;
+	type_id := type_id_;
+	name := name_;
+	initial_value := null;
+	index := -1;
+	params := null;
+	vars := null;
+	body := null;
+	ir := null;
+	return this;
+}
+
+virtual void dispose()
+{
+	dispose_body();
+	// FIXME
+	std.free(this);
+	return;
+}
+
+method void dispose_body()
+{
+	if (body != null) {
+		body.dispose();
+		body := null;
+	}
+	if (vars != null) {
+		vars.dispose();
+		vars := null;
+	}
+	return;
+}
+
+method int get_kind()
+{
+	return kind;
+}
+
+method int get_type()
+{
+	return type;
+}
+
+method Atoken get_type_id()
+{
+	return type_id;
+}
+
+method Atoken get_name()
+{
+	return name;
+}
+
+method Atoken get_name_string()
+{
+	return name.get_data();
+}
+
+
+method Atoken get_initial_value() 
+{
+	return initial_value;
+}
+
+method void set_initial_value(in Atoken initial_value_)
+{
+	initial_value := initial_value_;
+	return;
+}
+
+method void set_index(in int index_)
+{
+	index := index_;
+	return;
+}
+
+method int get_index()
+{
+	return index;
+}
+
+method buffer get_body()
+{
+	return body;
+}
+
+method buffer get_ir()
+{
+	return ir;
+}
+
+
+method buffer get_vars()
+{
+	return vars;
+}
+
+
+method buffer get_params()
+{
+	return params;
+}
+
+method void add_param(in int kind_, in int type_, 
+	in Atoken type_id_, in Atoken name_)
+{
+	var Amember p;
+	if (params == null) {
+		params := buffer.new(4);
+	}
+        p := Amember.new(kind_, type_, type_id_, name_);
+
+	params.push(p);
+	return;
+}
+
+method void add_var(in int kind_, in int type_, 
+	in Atoken type_id_, in Atoken name_)
+{
+	var Amember p;
+	if (vars == null) {
+		vars := buffer.new(4);
+	}
+        p := Amember.new(kind_, type_, type_id_, name_);
+
+	vars.push(p);
+	return;
+}
+
+method Astatement add_statement(in Astatement statement_)
+{
+	if (body == null) {
+		body := buffer.new(4);
+	}
+	body.push(statement_);
+	return statement_.get_parent();
+}
+
+} // class

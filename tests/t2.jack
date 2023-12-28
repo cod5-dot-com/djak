@@ -1,0 +1,32 @@
+
+class main {
+field int one;
+const int b := 0;
+
+function void main(in int argc, in bytes argv)
+{
+	var int b;
+	var void b;
+	var terra mix;
+
+	b[got()] := mix;
+	jmlo.jml();
+	if (bob() == bob.$Con) {
+		io("jml");
+	} else if (bob() == bob.$Con) {
+		iio();
+		break;
+		iio();
+	} else {
+		elo();
+	}
+	return;
+}
+}
+
+class tob {
+virtual int go()
+{
+	return 1;
+}
+}

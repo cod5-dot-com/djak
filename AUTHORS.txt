@@ -1,0 +1,17 @@
+
+zeudjak is a public domain open source project.
+
+	https://www.cod5.com
+
+AUTHORS
+=======
+
+CORE DEVELOPERS:
+----------------
+ 
+ - Jean-Marc Lienher <jean-marc.lienher@bluewin.ch>
+
+
+CONTRIBUTORS:
+-------------
+

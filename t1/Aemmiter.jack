@@ -1,0 +1,1272 @@
+
+class Aemmiter {
+field string _data;
+field string _head;
+field string _mid;
+field string _str;
+field Aclass clas;
+field string class_name;
+field Amember cur_memb;
+field buffer _proc;
+field buffer _stk;
+field buffer _expr_stk;
+field Atoken token1;
+field Atoken token2;
+field int pass;
+field buffer _virtuals;
+field int class_id;
+field int string_id;
+
+constructor Aemmiter new()
+{
+	_proc := buffer.new(100);
+	_stk := buffer.new(100);
+	_expr_stk := buffer.new(100);
+	_data := string.new(1);
+	_head := string.new(1);
+	_mid := string.new(1);
+	_str := string.new(1);
+	_virtuals := buffer.new(100);
+	token1 := null;
+	token2 := null;
+	class_id := 10;
+	string_id := 0;
+	return this;
+}
+
+virtual void dispose()
+{
+	_proc.dispose();
+	_stk.dispose();
+	_data.dispose();
+	_head.dispose();
+	_mid.dispose();
+	_str.dispose();
+	_virtuals.dispose();
+	_expr_stk.dispose();
+	std.free(this);
+	return;
+}
+
+method int emmit(in Aparser par)
+{
+	clas := par.get_next();
+	while (clas != null) {
+		gen_class();
+		clas := clas.get_next();
+	}
+	return 1;
+}
+
+method string get_head()
+{
+	return _head;
+}
+
+method string get_data()
+{
+	return _data;
+}
+
+method string get_mid()
+{
+	_mid.add("static void std__init_strings()\n{\n");
+	_mid.add(_str);
+	_str.dispose();
+	_str := string.new(1);
+	_mid.add("}\n");
+	return _mid;
+}
+
+
+method void gen_class()
+{
+        var Atoken to;
+	var string s;
+	var buffer mem;
+	var int i;
+	var int l;
+	var Amember m;
+
+       	to := clas.get_name();
+       	class_name := to.get_data();
+	_data.add("// class ");
+       	_data.add(class_name);
+	_data.add("\n");
+
+	s := string.new(4);
+	s.set_int(clas.get_nb_fields());
+       	_head.add("#define ");
+       	_head.add(class_name);
+       	_head.add("___DsizeD ");
+	_head.add(s);
+       	_head.add("\n");
+
+	class_id := class_id + 1;
+	s.set_int(class_id);
+       	_head.add("#define ");
+       	_head.add(class_name);
+       	_head.add("___DcidD ");
+	_head.add(s);
+       	_head.add("\n");
+	
+	s.dispose();
+
+	pass := 0;
+	while (pass < 3) {
+		mem := clas.get_members();
+		l := mem.length();
+		i := 0;
+		while (i < l) {
+			m := mem.get_at(i);	
+			gen_member(m);
+			if (pass == 2) {
+				m.dispose_body();
+			}
+			i := i + 1;
+		}
+		pass := pass + 1;
+	}
+	return;
+}
+
+method void gen_member(in Amember mb)
+{
+	var int k;
+	var string str;
+	str := string.new(8);
+	k := mb.get_kind();
+	if (pass == 0) {
+		pass_0(str, mb, k);
+		pass_1(str, mb, k);
+		pass_2(str, mb, k);
+	} else if (pass == 1) {
+		pass_3(str, mb, k);
+	} else if (pass == 2) {
+		pass_4(str, mb, k);
+	}
+	str.dispose();
+        return;
+}
+
+method void gen_conditional_call(in Avirtual v, in Amember mb)
+{
+	var Amember param;
+	var buffer params;
+	var int i;
+	var int l;
+	var Atoken tok;
+
+	_data.add("\tcase ");
+	_data.add(v.get_class_name());
+	_data.add("___DcidD:\n\t\treturn ");
+	params := mb.get_params();
+	_data.add(v.get_class_name());
+	_data.add("___V_");
+	_data.add(mb.get_name_string());
+	_data.add("(__this");
+	if (params != null) {
+		l := params.length();
+		i := 0;
+		while (i < l) {
+			param := params.get_at(i);
+			_data.add(", ");
+			tok := param.get_name();
+			_data.add(tok.get_data());
+			i := i + 1;
+		}
+	}
+	_data.add(");\n");
+	return;
+}
+
+method void gen_virtuals()
+{
+	var int i;
+	var Avirtual v;
+	var Amember mb;
+	i := _virtuals.length();
+	while (i > 0) {
+		i := i - 1;
+		v := _virtuals.get_at(i);
+		mb := v.get_member();
+		gen_method_decl(_head, "virtual", mb.get_name_string(), 
+			mb, Aclass.$Cvirtual);
+		_head.add(";\n");
+		gen_method_decl(_data, "virtual", mb.get_name_string(), 
+			mb, Aclass.$Cvirtual);
+		_data.add("\n{\n\tvar cid;\n");
+		_data.add("\tcid = ((var*)__this)[-1];\n");
+		_data.add("\tswitch (cid) {\n");
+		while (v != null) {
+			gen_conditional_call(v, mb);
+			v := v.get_next();
+		}
+		_data.add("\tdefault:\n\t\tstd__panic();\n\t}\n");
+		_data.add("\treturn 0;\n}\n");
+	}
+	return;
+}
+
+method void pass_0(io string str, in Amember mb, in int k)
+{
+	var Atoken t;
+	var int ty;
+
+	if (k == Aclass.$Cconst) {
+		_head.add("#define ");
+       		_head.add(class_name);
+		_head.add("__");
+        	_head.add(mb.get_name_string());
+		_head.add(" ");
+		t := mb.get_initial_value();
+		ty := t.get_type();
+		if (ty == Alexer.$Cstring) {
+			_head.add("(var)(__string_");
+	  		_head.add(class_name);
+        		_head.add(mb.get_name_string());
+			_head.add("+2)");
+			gen_string(mb.get_name_string(), t.get_data());
+		} else if (ty == Alexer.$Cquote) {
+			_head.add_char('\'');
+			_head.add(t.get_data());
+			_head.add_char('\'');
+		} else {
+			_head.add(t.get_data());
+		}
+		_head.add("\n");
+	}
+	if (k == Aclass.$Cfield) {
+		str.set_int(mb.get_index());
+		_data.add("#define _");
+		_data.add(class_name);
+		_data.add("_");
+        	_data.add(mb.get_name_string());
+		_data.add(" ((var*)__this)[");
+		_data.add(str);
+		_data.add("]\n");
+	}
+	return;
+}
+
+method void pass_1(io string str, in Amember mb, in int k)
+{
+	if (k == Aclass.$Cstatic) {
+		_data.add("static var ");
+       		_data.add(class_name);
+		_data.add("__");
+        	_data.add(mb.get_name_string());
+		_data.add(" = 0;\n");
+	}
+	return;
+}
+
+method void pass_2(io string str, in Amember mb, in int k)
+{	
+	return;
+}
+
+method void pad(in int depth)
+{
+	while (depth > 0) {
+		_data.add("\t");
+		depth := depth - 1;
+	}
+	return;
+}
+
+method Amember find_param(in string stri)
+{
+	var Amember v;
+	var int i;
+	var buffer vars;
+	var Atoken tok;
+	var string s;
+
+	vars := cur_memb.get_params();
+	i := 0;
+	if (vars != null) {
+		i := vars.length();
+	}
+	while (i > 0) {
+		i := i - 1;
+		v := vars.get_at(i);
+		if (v != null) {
+			tok := v.get_name();
+			s := tok.get_data();
+			if (s != null) {
+				if (stri.compare(s) == 0) {
+					return v;
+				}
+			}
+		}
+	}
+	return null;
+}
+
+method Amember find_member(in string stri)
+{
+	var Amember v;
+	var int i;
+	var buffer vars;
+	var Atoken tok;
+	var string s; 
+
+	i := 0;
+	vars := clas.get_members();
+	if (vars != null) {
+		i := vars.length();
+	}
+	while (i > 0) {
+		i := i - 1;
+		v := vars.get_at(i);
+		if (v != null) {
+			tok := v.get_name();
+			s := tok.get_data();
+			if ((s != null)) {
+				if (stri.compare(s) == 0) {
+					return v;
+				}
+			}
+		}
+	}
+	return null;
+}
+
+method Amember find_field(in string stri)
+{
+	var Amember v;
+	v := find_member(stri);
+	if ((v != null) && (v.get_kind() == Aclass.$Cfield)) {
+		return v;
+	}
+	return null;
+}
+
+method Amember find_static(in string stri)
+{
+	var Amember v;
+	v := find_member(stri);
+	if ((v != null) && (v.get_kind() == Aclass.$Cstatic)) {
+		return v;
+	}
+	return null;
+}
+
+
+method Amember find_meth_virt(in string stri)
+{
+	var Amember v;
+	v := find_member(stri);
+	if (v != null) {
+		if ((v.get_kind() == Aclass.$Cmethod) ||
+			(v.get_kind() == Aclass.$Cvirtual))
+		{
+			return v;
+		}
+	}
+	return null;
+}
+
+
+method Amember find_local(in string stri)
+{
+	var Amember v;
+	var int i;
+	var buffer vars;
+	var Atoken tok;
+	var string s;
+
+	vars := cur_memb.get_vars();
+	i := 0;
+	if (vars != null) {
+		i := vars.length();
+	}
+	while (i > 0) {
+		i := i - 1;
+		v := vars.get_at(i);
+		if (v != null) {
+			tok := v.get_name();
+			s := tok.get_data();
+			if ((s != null)) {
+				if (stri.compare(s) == 0) {
+					return v;
+				}
+			}
+		}
+	}
+	return null;
+}
+
+method void expr_gen_call(in Aexpr expr)
+{
+	var Aexpr ex1;
+	var Aexpr ex2;
+	var string s;
+	var Atoken tok;
+	var string stri;
+	var Amember v;
+	var string p;
+	var string obj;
+	var int fld;
+
+	s := string.new(8);
+	ex2 := _expr_stk.pop();
+	ex1 := _expr_stk.pop();
+// FIXME
+	stri := ex1.get_value();
+	obj := ex1.get_value2();
+
+	// class member 
+	if (obj == null) {
+		v := find_meth_virt(stri);
+		if ((v != null)) {
+			s := string.new(8);
+			s.add(class_name);
+			s.add("__");
+			s.add(stri);
+			p := ex2.get_value();
+			if (p.length() > 0) {
+				s.add("(__this, ");
+				s.add(p);
+				s.add(")");
+			} else {
+				s.add("(__this)");
+			}
+			expr.set_value(s);
+			_expr_stk.push(expr);
+			return;
+		}
+		error(expr.get_origin(), "cannot find method.");
+		return;
+	}
+
+	fld := 0;
+	v := find_local(obj);
+	if (v == null) {
+		v := find_param(obj);
+	}
+	if (v == null) {
+		v := find_field(obj);
+		if (v != null) {
+			fld := 1;
+		}
+	}
+	if (v != null) {
+		tok := v.get_type_id();
+		if (tok == null) {
+			console.log(obj);
+			console.log(v.get_name_string());
+			error(ex1.get_origin(), "wrong type of method.");
+			return;
+		}
+		s := string.new(8);
+		s.add(tok.get_data());
+		s.add("__");
+		s.add(ex1.get_value());
+		p := ex2.get_value();
+		s.add("(");
+		if (fld != 0) {
+			s.add("_");
+			s.add(class_name);
+			s.add("_");
+		}
+		s.add(ex1.get_value2());
+		if (p.length() > 0) {
+			s.add(",");
+			s.add(ex2.get_value());
+		}
+		s.add(")");
+		expr.set_value(s);
+		_expr_stk.push(expr);
+		return;
+	}
+
+	s.add(obj);
+	s.add("__");
+	s.add(ex1.get_value());
+	s.add("(");
+	s.add(ex2.get_value());
+	s.add(")");
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_gen_sub_expr(in Aexpr expr)
+{
+	var string s;
+	if (expr.get_right() == null) {
+		s := string.new(8);
+		expr.set_value(s);
+		_expr_stk.push(expr);
+	}
+	return;
+}
+
+method void expr_gen_comma(in Aexpr expr)
+{
+	var Aexpr ex1;
+	var Aexpr ex2;
+	var string s;
+	ex2 := _expr_stk.pop();
+	ex1 := _expr_stk.pop();
+	s := string.new(8);
+	s.add(ex1.get_value());
+	s.add(",");
+	s.add(ex2.get_value());
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_gen_index(in Aexpr expr)
+{
+	var Aexpr ex1;
+	var Aexpr ex2;
+	var string s;
+	ex2 := _expr_stk.pop();
+	ex1 := _expr_stk.pop();
+	s := string.new(8);
+	s.add("((var*)");
+	s.add(ex1.get_value());
+	s.add(")[");
+	s.add(ex2.get_value());
+	s.add("]");
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_gen_par(in Aexpr expr)
+{
+	var Aexpr ex1;
+	var string s;
+	ex1 := _expr_stk.pop();
+	s := string.new(8);
+	s.add("(");
+	s.add(ex1.get_value());
+	s.add(")");
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_gen_constant(in Aexpr expr)
+{
+	var Aexpr ex1;
+	var Aexpr ex2;
+	var string s;
+	ex2 := _expr_stk.pop();
+	ex1 := _expr_stk.pop();
+	s := string.new(8);
+	s.add(ex1.get_value());
+	s.add("__");
+	s.add(ex2.get_value());
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+
+
+method void expr_gen_dot(in Aexpr expr)
+{
+	var Aexpr ex1;
+	var Aexpr ex2;
+	ex2 := _expr_stk.pop();
+	ex1 := _expr_stk.pop();
+	expr.set_value2(ex1.get_value());
+	expr.set_value(ex2.get_value());
+	_expr_stk.push(expr);
+	return;
+}
+
+method void gen_string(in string s2, in string value)
+{
+	_mid.add("static char __strings_");
+	_mid.add(class_name);
+	_mid.add(s2);
+	_mid.add("[]=");
+	_mid.add_char('"');
+	_mid.add(value);
+	_mid.add_char('"');
+	_mid.add(";\n");
+
+	_mid.add("static var __string_");
+	_mid.add(class_name);
+	_mid.add(s2);
+	_mid.add("[]={0,0, ");
+//	_mid.add("(var) __strings_");
+//	_mid.add(class_name);
+//	_mid.add(s2);
+	_mid.add("0,-1};\n");
+
+	_str.add("\t__string_");
+	_str.add(class_name);
+	_str.add(s2);
+	_str.add("[2]=");
+	_str.add("(var) __strings_");
+	_str.add(class_name);
+	_str.add(s2);
+	_str.add(";\n");
+
+
+	return;
+}
+
+method void expr_gen_str_const(in Aexpr expr)
+{
+	var string s;
+	var string s2;
+	s := string.new(8);
+	s2 := string.new(8);
+	string_id := string_id + 1;
+	s2.set_int(string_id);
+
+	gen_string(s2, expr.get_value()); 
+
+	s.add("(var)(__string_");
+	s.add(class_name);
+	s.add(s2);
+	s.add("+ 2)");
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	s2.dispose();
+	return;
+}
+
+method void expr_gen_char_const(in Aexpr expr)
+{
+	var string s;
+	s := string.new(8);
+	s.add("'");
+	s.add(expr.get_value());
+	s.add("'");
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+
+method void expr_gen0(in Aexpr expr, in string op)
+{
+	var string s;
+	s := string.new(8);
+	s.add(op);
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_gen1(in Aexpr expr, in string op)
+{
+	var Aexpr ex1;
+	var string s;
+	ex1 := _expr_stk.pop();
+	s := string.new(8);
+	s.add(op);
+	s.add("(");
+	s.add(ex1.get_value());
+	s.add(")");
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_gen_assign(in Aexpr expr, in string op)
+{
+	var Aexpr ex1;
+	var Aexpr ex2;
+	var string s;
+	ex2 := _expr_stk.pop();
+	ex1 := _expr_stk.pop();
+	s := string.new(8);
+	s.add(ex1.get_value());
+	s.add(op);
+	s.add(ex2.get_value());
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_gen2(in Aexpr expr, in string op)
+{
+	var Aexpr ex1;
+	var Aexpr ex2;
+	var string s;
+	var int oper;
+	ex2 := _expr_stk.pop();
+	ex1 := _expr_stk.pop();
+	s := string.new(8);
+	oper := ex1.get_op();
+	if (oper > Aclass.$Croot) {
+		s.add("(");
+	}
+	s.add(ex1.get_value());
+	if (oper > Aclass.$Croot) {
+		s.add(")");
+	}
+	s.add(op);
+	oper := ex2.get_op();
+	if (oper > Aclass.$Croot) {
+		s.add("(");
+	}
+	s.add(ex2.get_value());
+	if (oper > Aclass.$Croot) {
+		s.add(")");
+	}
+	expr.set_value(s);
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_gen_var(in Aexpr expr)
+{
+	var string stri;
+	var Amember v;
+	var string s;
+	var Aexpr ex;
+
+	stri := expr.get_value();
+	if (stri == null) {
+		_expr_stk.push(expr);
+		return;
+	}
+	// local variable : no translation
+	v := find_local(stri);
+	if (v != null) {
+		_expr_stk.push(expr);
+		return;
+	}
+
+	// parameters : no translation
+	v := find_param(stri);
+	if (v != null) {
+		_expr_stk.push(expr);
+		return;
+	}
+
+	// class field 
+	ex := expr.get_parent();
+	v := null;
+	if (ex.get_op() != Aclass.$Cdot) {
+		v := find_member(stri);
+	}
+	if ((v != null) && (v.get_kind() == Aclass.$Cfield)) {
+		s := string.new(8);
+		s.add("_");
+		s.add(class_name);
+		s.add("_");
+		s.add(stri);
+		expr.set_value(s);
+		_expr_stk.push(expr);
+		return;
+	}
+
+	// static data
+	v := find_static(stri);
+	if (v != null) {
+		s := string.new(8);
+		s.add(class_name);
+		s.add("__");
+		s.add(stri);
+		expr.set_value(s);
+		_expr_stk.push(expr);
+		return;
+	}
+
+	// other : no translation
+	_expr_stk.push(expr);
+	return;
+}
+
+method void expr_process(in Aexpr expr)
+{
+	var int op;
+	var Aexpr ex;
+
+	op := expr.get_op();
+	if (op < Aclass.$Croot) {
+		if (op == Aclass.$Cnull) {
+			expr_gen0(expr, "0");
+		} else if (op == Aclass.$Cchar_const) {
+			expr_gen_char_const(expr); 
+		} else if (op == Aclass.$Cint_const) {
+			_expr_stk.push(expr);
+		} else if (op == Aclass.$Cstr_const) {
+			expr_gen_str_const(expr);
+		} else if (op == Aclass.$Cthis) {
+			expr_gen0(expr, "__this");
+		} else {
+			expr_gen_var(expr);
+		}
+		return;
+	}
+	if (op == Aclass.$Croot) {
+		if (_expr_stk.length() != 1) {
+			error(expr.get_origin(), "wrong expression...");
+			return;
+		}
+		ex := _expr_stk.pop();
+		_data.add(ex.get_value());
+	} else if (op == Aclass.$Cassign) {
+		expr_gen_assign(expr, "=");
+	} else if (op == Aclass.$Cequal) {
+		expr_gen2(expr, "==");
+	} else if (op == Aclass.$Cnotequal) {
+		expr_gen2(expr, "!=");
+	} else if (op == Aclass.$Clargerequal) {
+		expr_gen2(expr, ">=");
+	} else if (op == Aclass.$Clesserequal) {
+		expr_gen2(expr, "<=");
+ 	} else if (op == Aclass.$Clarger) {
+		expr_gen2(expr, ">");
+ 	} else if (op == Aclass.$Clesser) {
+		expr_gen2(expr, "<");
+ 	} else if (op == Aclass.$Clogicaland) {
+		expr_gen2(expr, "&&");
+	} else if (op == Aclass.$Clogicalor) {
+		expr_gen2(expr, "||");
+ 	} else if (op == Aclass.$Cadd) {
+		expr_gen2(expr, "+");
+ 	} else if (op == Aclass.$Csub) {
+		expr_gen2(expr, "-");
+ 	} else if (op == Aclass.$Cmult) {
+		expr_gen2(expr, "*");
+ 	} else if (op == Aclass.$Cdiv) {
+		expr_gen2(expr, "/");
+ 	} else if (op == Aclass.$Cmodulo) {
+		expr_gen2(expr, "%");
+ 	} else if (op == Aclass.$Clogicalnot) {
+		expr_gen1(expr, "!");
+ 	} else if (op == Aclass.$Cparenthesis) {
+		expr_gen_par(expr);
+ 	} else if (op == Aclass.$Cunaryplus) {
+		expr_gen1(expr, "+");
+ 	} else if (op == Aclass.$Cunaryminus) {
+		expr_gen1(expr, "-");
+ 	} else if (op == Aclass.$Cdot) {
+		expr_gen_dot(expr);
+ 	} else if (op == Aclass.$Cconstant) {
+		expr_gen_constant(expr);
+ 	} else if (op == Aclass.$Ccall) {
+		expr_gen_call(expr);
+ 	} else if (op == Aclass.$Cindex) {
+		expr_gen_index(expr);
+ 	} else if (op == Aclass.$Ccomma) {
+		expr_gen_comma(expr);
+ 	} else if (op == Aclass.$Cexpr) {
+		expr_gen_sub_expr(expr);
+	} else {
+		error(expr.get_origin(), "UNKNOW OP\n");
+		return;
+	}
+	return;
+}
+
+method void expr_gen(in Aexpr expr)
+{
+	var Aexpr ex;
+	var Aexpr ex1;
+	var buffer stack;
+	stack := buffer.new(4);
+	ex := expr.get_right();
+	ex := expr;
+	ex.set_flags(0);
+	stack.push(ex);
+	while (stack.length() > 0) {
+		ex := stack.get_last();
+		if (ex.get_flags() != 0) {
+			ex := stack.pop();
+			expr_process(ex);
+		} else {
+			ex1 := ex;
+			ex.set_flags(1);
+			ex := ex.get_right();
+			if (ex != null) {
+				ex.set_flags(0);
+				stack.push(ex);
+			}
+			ex := ex1.get_left();
+			if  (ex != null) {
+				ex.set_flags(0);
+				stack.push(ex);
+			}
+		}
+	}
+	stack.dispose();
+	return;
+}
+
+method void body_gen(in Amember mb, in int k, in buffer vars_, in buffer body_)
+{
+	var int l, i;
+	var Atoken tok;
+	var Amember va;
+	var Astatement stm;
+	var int ty;
+	var buffer stack;
+	var int padde;
+	var Aexpr ex;
+	var buffer buf;
+
+	cur_memb := mb;
+	_data.add("{\n");
+	stack := buffer.new(4);
+	if (vars_ != null) {
+		l := vars_.length();
+	} else {
+		l := 0;
+	}
+	i := 0;
+	while (i < l) {
+		va := vars_.get_at(i);
+		//_data.add("\t");
+		//gen_type(va);
+		_data.add("\tvar ");
+		tok := va.get_name();
+		_data.add(tok.get_data());
+		_data.add(";\n");
+		i := i + 1;
+	}
+
+	if (k == Aclass.$Cconstructor) {
+		_data.add("\tNEW(");
+		_data.add(class_name);	
+		_data.add(");\n");
+	}
+
+	l := body_.length();
+	i := 0;
+	padde := 1;
+	while (i < l) {
+		stm := body_.get_at(i);
+		ty := stm.get_type();
+		if ((ty != Aclass.$Celseif) && (ty != Aclass.$Celse)) {
+			_data.add("\n");
+			pad(padde);
+		}
+		if ((ty == Aclass.$Cif) || (ty == Aclass.$Celseif)) {
+			if (ty == Aclass.$Celseif) {
+				_data.add(" else if (");
+			} else {
+				_data.add("if (");
+			}
+			ex := stm.get_expression();
+			if (ex != null) {
+				expr_gen(ex);
+			}	
+			_data.add(") {");
+			stack.push(l);
+			stack.push(i + 1);
+			stack.push(body_);
+			buf := stm.get_else();
+			if (buf != null) {
+				stack.push(buf.length());
+				stack.push(0);
+				stack.push(buf);
+			}
+
+			padde := padde + 1;
+			i := -1;
+			l := 0;
+			if (body_ != null) {
+				body_ := stm.get_statements();
+				if (body_ != null) {
+					l := body_.length();
+				}
+			}
+		} else if (ty == Aclass.$Celse) {
+			_data.add(" else {");
+			padde := padde + 1;
+		} else if (ty == Aclass.$Cbreak) {
+			_data.add("break;");
+		} else if (ty == Aclass.$Creturn) {
+			ex := stm.get_expression();
+			if (ex != null) {
+				_data.add("return ");
+				expr_gen(ex);
+				_data.add(";");
+			} else {
+				_data.add("return 0;");
+			}	
+		} else if (ty == Aclass.$Cdo) {
+			ex := stm.get_expression();
+			if (ex != null) {
+				expr_gen(ex);
+			}	
+			_data.add(";");
+		} else if (ty == Aclass.$Clet) {
+			ex := stm.get_expression();
+			if (ex != null) {
+				expr_gen(ex);
+			}	
+			_data.add(";");
+		} else if (ty == Aclass.$Cwhile) {
+			_data.add("while (");
+			ex := stm.get_expression();
+			if (ex != null) {
+				expr_gen(ex);
+			}	
+			_data.add(") {");
+			stack.push(l);
+			stack.push(i + 1);
+			stack.push(body_);
+			i := -1;
+			l := 0;
+			body_ := stm.get_statements();
+			if (body_ != null) {
+				l := body_.length();
+			}
+			padde := padde + 1;
+		} else {
+			_data.add("ERROR !!");
+		}
+		i := i + 1;
+		if (i >= l) {
+			padde := padde - 1;
+			_data.add("\n");
+			pad(padde);
+			_data.add("}");
+		}
+	
+		while ((i >= l) && (stack.length() > 0)) {
+			body_ := stack.pop();
+			i := stack.pop();
+			l := stack.pop();
+			if (i >= l) {
+				padde := padde - 1;
+				_data.add("\n");
+				pad(padde);
+				_data.add("}");
+			}
+		}
+	}
+	_data.add("\n");
+	stack.dispose();
+	return;
+}
+
+
+method void gen_type(in Amember mb)
+{
+	var int ty; 
+	var Atoken tok;
+	tok := mb.get_type_id();
+	if (tok != null) {
+		_data.add(tok.get_data());
+	} else {
+		ty := mb.get_type();
+		if (ty == Aclass.$Cint) {
+			_data.add("var");
+		} else if (ty == Aclass.$Cvoid) {
+			_data.add("void");
+		//} else if (ty == Aclass.$Cbytes) {
+		//	_data.add("void*");
+		} else {
+			error(mb.get_name(), "unknown type");
+		}
+	}
+	return;
+}
+	
+method void add_virtual(in Amember mb)
+{
+	var string n;
+	var Avirtual v;
+	var Avirtual nv;
+	var int i;
+	var string s;
+
+	n := mb.get_name_string();
+
+	nv := Avirtual.new(mb, class_name);
+	i := _virtuals.length();
+	while (i > 0) {
+		i := i - 1;
+		v := _virtuals.get_at(i);
+		if (v != null) {
+			s := v.get_member_name();
+			if ((s != null) && (n.compare(s) == 0)) {
+				nv.set_next(v.get_next());
+				v.set_next(nv);
+				return;
+			}
+		}
+	}
+	_virtuals.push(nv);
+	return;
+}
+
+method void gen_virtual_caller(in Amember mb)
+{
+	var Amember param;
+	var buffer params;
+	var int i;
+	var int l;
+	var Atoken tok;
+	params := mb.get_params();
+	_head.add("#define ");
+	_head.add(class_name);
+	_head.add("__");
+	_head.add(mb.get_name_string());
+	_head.add("(___this");
+	if (params != null) {
+		l := params.length();
+		i := 0;
+		while (i < l) {
+			param := params.get_at(i);
+			_head.add(", ");
+			tok := param.get_name();
+			_head.add(tok.get_data());
+			i := i + 1;
+		}
+	}
+	_head.add(") virtual__");
+	_head.add(mb.get_name_string());
+	_head.add("(___this");
+	if (params != null) {
+		l := params.length();
+		i := 0;
+		while (i < l) {
+			param := params.get_at(i);
+			_head.add(", ");
+			tok := param.get_name();
+			_head.add(tok.get_data());
+			i := i + 1;
+		}
+	}
+	_head.add(")\n");
+	return;
+}
+
+method void gen_method_decl(io string dest, in string c_name, in string name, 
+	in Amember mb, in int k)
+{
+	var Amember param;
+	var buffer params;
+	var int i;
+	var int l;
+	var int sub;
+	var Atoken tok;
+
+	dest.add("var ");
+	dest.add(c_name);
+	dest.add("__");
+       	dest.add(name);
+	params := mb.get_params();
+	dest.add("(");
+	sub := 1;
+	if ((k == Aclass.$Cmethod)  || (k == Aclass.$Cvirtual)) {
+		dest.add("var __this");
+		sub := 2;
+	}
+	if (params != null) {
+		l := params.length();
+		i := 0;
+		while (i < l) {
+			param := params.get_at(i);
+			if ((i > 0) || (sub == 2)) {
+				dest.add(", ");
+			}
+			dest.add("var ");
+			tok := param.get_name();
+			dest.add(tok.get_data());
+			i := i + 1;
+		}
+	}
+	dest.add(")");
+	return;	
+}
+
+method void pass_3(io string str, in Amember mb, in int k)
+{
+	var buffer vars;
+	var buffer body;
+	var int sub;
+
+	sub := 0;
+	if (k == Aclass.$Cconstructor) {
+		sub := 1;
+	} else if (k == Aclass.$Cfunction) {
+		sub := 1;
+	} else if (k == Aclass.$Cmethod) {
+		sub := 2;
+	} else if (k == Aclass.$Cvirtual) {
+		sub := 2;
+	}
+	if (sub != 0) {
+		if (k == Aclass.$Cvirtual) {
+			add_virtual(mb);
+			gen_virtual_caller(mb);
+			str.set("_V_");
+			str.add(mb.get_name_string());
+			gen_method_decl(_head, class_name, str, mb, k);
+			_head.add(";\n");
+			gen_method_decl(_data, class_name, str, mb, k);
+			_data.add("\n");
+		} else {
+
+			gen_method_decl(_head, class_name, 
+				mb.get_name_string(), mb, k);
+			_head.add(";\n");
+			gen_method_decl(_data, class_name, 
+				mb.get_name_string(), mb, k);
+			_data.add("\n");
+		}
+		vars := mb.get_vars();
+		body := mb.get_body();
+		if (body != null) {
+			body_gen(mb, k, vars, body);
+		}
+	}
+	return;
+}
+	
+method void pass_4(in string str, in Amember mb, in int k)
+{
+	return;
+}
+
+
+method void error(in Atoken t, in string e)
+{
+	if (t != null) {
+		console.log_str(t.get_file());
+		console.log_str(": at line (");
+		console.log_int(t.get_line());
+		console.log_str(") '");
+		console.log_str(t.get_data());
+		console.log_str("' ");
+	}
+	console.log(e);
+	dump();
+	std.exit(-1);
+	return;
+}
+	
+method void dump()
+{
+/*
+	var linked c;
+	var Atoken to;
+	var string s;
+	var int l;
+	l := _proc.length();
+
+	while (l > 0) {
+		l := l - 1;
+		c := _proc.get_at(l);
+		to := c.get_data1();
+		s := to.get_data();
+		if (s != null) {
+			console.log_int(c.get_flags());
+			console.log(s);
+		}
+	}
+*/
+	return;
+}
+
+} // class

@@ -1,0 +1,541 @@
+
+class Alexer {
+
+field string _src;
+field string _str;
+field buffer _pool;
+field int pos;
+field int line;
+field string _token;
+field int type;
+field int c;
+field int len;
+field int enable_escape;
+field hash _stringh;
+field buffer _syms;
+
+field int in_string;
+field int in_quote;
+field int in_comment;
+field int in_com_multi;
+field int in_escape;
+field int in_asm;
+field int in_asm_multi;
+field int in_number;
+field int in_identifier;
+field int in_space;
+field int need_char;
+
+const int Cstring := 1;
+const int Cquote := 2;
+const int Ccomment := 3;
+const int Casm := 4;
+const int Cnumber := 5;
+const int Cidentifier := 6;
+const int Coperator := 7;
+const int Cerror := 8;
+const int Cnewline := 9;
+const int Cend := 10;
+
+constructor Alexer new()
+{
+	_str := string.new(1024);
+	_token := string.new(256);
+	_pool := buffer.new(32);
+	_stringh := hash.new(4096);
+	_syms := buffer.new(2048);
+	_syms.push(0);
+	pos := 0;
+	line := 1;
+	c := 0;
+	len := 0;
+	enable_escape := 0;
+
+	need_char := 1;
+
+	in_string := 0;
+	in_quote := 0;
+	in_comment := 0;
+	in_com_multi := 0;
+	in_escape := 0;
+	in_asm := 0;
+	in_asm_multi := 0;
+	in_number := 0;
+	in_identifier := 0;
+	in_space := 1;
+
+	return this;
+}
+
+virtual void dispose()
+{
+	_pool.dispose();
+	_token.dispose();
+	_str.dispose();
+	_syms.dispose();
+	_stringh.dispose();
+	std.free(this);
+	return;
+}
+
+method void begin(in string file_)
+{
+	pos := 0;
+	line := 1;
+	_src := get_string(file_);
+	return;
+}
+
+method Atoken get_at(in int x)
+{
+	return _pool.get_at(x);
+}
+
+method void shift()
+{
+	_pool.shift();
+	return;
+}
+
+method int empty()
+{
+	return _pool.empty();
+}
+
+method void set_enable_escape(in int v)
+{
+	enable_escape := v;
+	return;
+}
+
+method string get_string(in string str_)
+{
+	var string s;
+	var int i;
+	i := _stringh.get(str_);
+	if (i > 0) {
+		return _syms.get_at(i);
+	}
+	s := string.new(str_.length() + 2);
+	s.add(str_);
+	_stringh.add(s, _syms.length());
+	_syms.push(s);
+	return s;	
+
+}
+
+method int get_string_id(in string str_) 
+{
+	return _stringh.get(str_);
+}
+
+method void add(in string str_)
+{
+	var string ns;
+	if (len < 0) {
+		// we've got an error
+		return;
+	}
+	if (str_.length() < 1) {
+		finish();
+		return;
+	}
+	if (pos < _str.length()) {
+		ns := string.new(32);
+		_str.substr(pos, 0, ns);
+		ns.add(str_);
+		_str.dispose();
+		_str := ns;
+		_str.set(str_);
+	} else {
+		_str.set(str_);
+	}
+	pos := 0;
+	len := _str.length();
+	if (need_char != 0) {
+		next();
+	}
+	tokenize();
+	return;
+}
+
+method void tokenize()
+{
+	var int s;
+	s := state();
+	while ((s != 0)) {
+		if (need_char != 0) {
+			return;
+		}
+		s := state();
+	}
+	return;
+}
+
+method int is_digit(in int c)
+{
+	if ((c >= '0') && (c <= '9')) {
+		return 1;
+	}
+	return 0;
+}
+
+method int is_letter(in int c)
+{
+	if (((c >= 'a') && (c <= 'z')) ||
+		((c >= 'A') && (c <= 'Z'))) 
+	{
+		return 1;
+	}
+	return 0;
+}
+
+method int is_space(in int c)
+{
+	if ((c == ' ') ||
+		(c == '\t') ||
+		(c == '\n') ||
+		(c == '\r'))
+	{
+		return 1;
+	}
+	return 0;
+}
+
+method int next()
+{
+	if (pos >= len) {
+		need_char := 1;
+		c := '\0';
+		return 0;
+	}
+	need_char := 0;
+	c := _str.get_at(pos);
+	pos := pos + 1;
+	return 1;
+}
+
+method void validate(in int type_)
+{
+	var Atoken t;
+	if (type_ == Alexer.$Cnewline) {
+		line := line + 1;
+	}
+	t := Atoken.new(type_, get_string(_token), line, _src);
+	_pool.push(t);
+	_token.set_at(0, '\0');
+	return;
+}
+
+method void error(in string msg)
+{
+	console.log_str("Lexer: ");
+	console.log_str(_src);
+	console.log_str(" @ (");
+	console.log_int(line);
+	console.log_str(") : '");
+	console.log_str(_token);
+	console.log_str("' ");
+	console.log(msg);
+	len := -1;
+	return;
+}
+
+method int state()
+{
+	var int l;
+	var int a, b, d;
+	
+	if (in_escape != 0) {
+		if (enable_escape == 0) {
+			if (c != '\n') { 
+				_token.add_char('\\');
+				_token.add_char(c);
+				next();
+				in_escape := 0;
+				return 1;
+			}
+			line := line + 1;
+			// here there is a \ blackslash at the en of the line
+		} else  if (c != '\n') {
+			a := c;
+			if (c == '0') {
+				a := 0;
+			} else if (c == 'n') {
+				a := '\n';
+			} else if (c == 't') {
+				a := '\t';
+			} else if (c == 'b') {
+				a := '\b';
+			} else {
+				_token.add_char('\\');
+			}
+			_token.add_char(a);
+		} else {
+			line := line + 1;
+		}
+		next();
+		in_escape := 0;
+		return 1;
+	} else if (in_string != 0) {
+		if (c == '"') { 
+			in_string := 0;
+			validate(Alexer.$Cstring);
+		} else  if (c == '\\') { 
+			in_escape := 1;
+		} else if (c == '\n') {
+			error("newline in string.");
+			return 0;
+		} else {
+			_token.add_char(c);
+		}
+		next();
+		return 1;
+	} else if (in_quote != 0) {
+		if (c == '\'') {
+			in_quote := 0;
+			validate(Alexer.$Cquote);
+		} else if (c == '\\') {	
+			in_escape := 1;
+		} else { 
+			_token.add_char(c);
+		}
+		next();
+		return 1;
+	} else if (in_comment != 0) {
+		if (in_comment == -1) {
+			if (c == '/') {
+				in_comment := 1;
+				next(); return 1;
+			} else if (c == '*') {
+				in_comment := 0;
+				in_com_multi := 1;
+				next(); return 1;
+			}
+			in_comment := 0;
+			_token.add_char('/');
+			return 1;
+		} else if (in_comment == 1) {
+			if (c == '#') {
+				in_asm := 1;
+				in_comment := 0;
+				next(); return 1;
+			}
+			in_comment := 2;
+		}
+		if (c == '\n') {
+			in_comment := 0;
+			validate(Alexer.$Ccomment);
+			validate(Alexer.$Cnewline);
+		}
+		if (c == '\0') {
+			return 0;
+		}
+		next();
+		return 1;
+	} else if (in_com_multi != 0) {
+		if (in_com_multi == 1) {
+			if (c == '#') {
+				in_asm_multi := 2;
+				in_com_multi := 0;
+				next(); return 1;
+			}
+			in_com_multi := 2;
+		} else if (in_com_multi == 2) {
+			if (c == '*') {
+				in_com_multi := 3;
+				next(); return 1;
+			}
+		} else if (in_com_multi == 3) {
+			if (c == '/') {
+				in_com_multi := 0;
+				validate(Alexer.$Ccomment);
+				next(); return 1;
+			} 
+			in_com_multi := 2;
+		}
+		next();
+		return 1;
+	} else if (in_asm != 0) {
+		if (c == '\n') {
+			validate(Alexer.$Casm);
+			validate(Alexer.$Cnewline);
+			in_asm := 0;
+			next();
+			return 1;
+		}
+		if (c == '\0') {
+			return 0;
+		}
+		_token.add_char(c);
+		next();
+		return 1;
+	} else if (in_asm_multi != 0) {
+		if (in_asm_multi == 2) {
+			if (c == '*') {
+				in_asm_multi := 3;
+				next(); return 1;
+			}
+		} else if (in_asm_multi == 3) {
+			if (c == '/') {
+				in_asm_multi := 0;
+				validate(Alexer.$Casm);
+				next(); return 1;
+			} 
+			in_asm_multi := 2;
+		}
+		_token.add_char(c);
+		next();
+		return 1;
+	} else if (in_number != 0) {
+		if (is_digit(c) != 0) {
+			_token.add_char(c);
+			next();
+		} else {
+			in_number := 0;
+			validate(Alexer.$Cnumber);
+		}
+		return 1;
+	} else if (in_identifier != 0) {
+		while ((c == '_') || (is_letter(c) != 0) || 
+			(is_digit(c) != 0)) 
+		{
+			_token.add_char(c);
+			if (next() == 0) {
+				return 1;
+			}
+		}
+		validate(Alexer.$Cidentifier);
+		in_identifier := 0;
+		return 1;
+	} else if (in_space != 0) {
+		while (is_space(c) != 0) {
+			if (c == '\n') {
+				validate(Alexer.$Cnewline);
+			}
+			if (next() == 0) {
+				return 1;
+			}
+		}
+		in_space := 0;
+		return 1;
+	} else {
+		l := _token.length();
+		if (is_space(c) != 0) {
+			if (l != 0) {
+				validate(Alexer.$Coperator);
+			}
+			in_space := 1;
+			return 1;
+		} else if (l == 0) {
+			if (is_digit(c) != 0) {
+				_token.add_char(c);
+				next(); in_number := 1; return 1;
+			} else if ((c == '_') || (is_letter(c) != 0)) {
+				_token.add_char(c);
+				next(); in_identifier := 1; return 1;
+			} else if (c == '\'') { 
+				next(); in_quote := 1; return 1;
+			} else if (c == '"') {
+				next(); in_string := 1; return 1;
+			} else if ((c == '/')) {
+				next(); in_comment := -1; return 1;
+			}
+			_token.add_char(c);
+			next(); 
+			return 1;
+		} else if (l == 1) {
+			a := _token.get_at(0);
+			if (c == '=') {
+				if ( (a == '+') ||	// +=
+					(a == '-') ||	// -=
+					(a == ':') ||	// :=
+					(a == '*') ||	// *=
+					(a == '/') ||	// ...
+					(a == '%') ||
+					(a == '&') ||
+					(a == '^') ||
+					(a == '|') ||
+					(a == '>') ||
+					(a == '<') ||
+					(a == '~'))
+				{
+					_token.add_char(c);
+					validate(Alexer.$Coperator);
+					next(); return 1;
+				} else  if ((a == '=') ||
+					(a == '!'))
+				{
+					_token.add_char(c);
+					next(); return 1;
+				}
+			} else if (((a == '+') && (c == '+')) ||
+				((a == '-') && (c == '>')) || 
+				((a == ':') && (c == ':')) || 
+				((a == '|') && (c == '|')) || 
+				((a == '&') && (c == '&')) || 
+				((a == '.') && (c == '$')) || 
+				((a == '-') && (c == '-'))) 
+			{
+				_token.add_char(c);
+				validate(Alexer.$Coperator);
+				next(); return 1;
+			} else if (((a == '>') && (c == '>')) ||
+				((a == '.') && (c == '.')) ||
+				((a == '<') && (c == '<'))) 
+			{
+				_token.add_char(c);
+				next(); return 1;
+				
+			}
+			validate(Alexer.$Coperator);
+			return 1;
+		} else if (l == 2) {
+			a := _token.get_at(0);
+			b := _token.get_at(1);
+			if (((a == '!') && (b == '=') && (c == '=')) ||
+				((a == '=') && (b == '=') && (c == '=')) ||
+				((a == '>') && (b == '>') && (c == '=')) ||
+				((a == '.') && (b == '.') && (c == '.')) ||
+				((a == '<') && (b == '<') && (c == '=')))
+			{ 
+				_token.add_char(c);
+				validate(Alexer.$Coperator);
+				next(); return 1;
+			} else if (((a == '>') && (b == '>') && (c == '>')))
+			{
+				_token.add_char(c);
+				next(); return 1;
+			} 
+			validate(Alexer.$Coperator);
+			return 1;
+		} else {
+			a := _token.get_at(0);
+			b := _token.get_at(1);
+			d := _token.get_at(2);
+			if ((a == '>') && (b == '>') &&
+				(d == '>') && (c == '=')) 
+			{
+				// >>>=
+				_token.add_char(c);
+				validate(Alexer.$Coperator);
+				next(); return 1;
+			}
+			validate(Alexer.$Coperator);
+			return 1;
+
+		}
+	}
+	return 0;
+}
+
+method void finish()
+{
+	if (_token.length() > 0) {
+		error("unterminated token.");
+	}
+	validate(Alexer.$Cend);
+	return;
+}
+
+} // class

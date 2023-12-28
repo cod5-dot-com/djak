@@ -1,0 +1,77 @@
+class file {
+field string _folder;
+field response fs_cb;
+
+constructor file new(in string folder, in response fscb)
+{
+	_folder := folder.to_string();
+	fs_cb := fscb;
+	return this;
+}
+
+virtual void dispose()
+{
+	fs_cb.clear();
+	_folder.dispose();
+	std.free(this);
+	return;
+}
+
+method void mkfolder()
+{
+	fs_cb.clear();
+	std.mkfolder(fs_cb);
+	return;
+}
+
+method void mkdir(in string name)
+{
+	fs_cb.clear();
+	std.mkdir(_folder, name, fs_cb);
+	return;
+}
+
+method void read(in string name, in int seek, in int size_)
+{
+	fs_cb.clear();
+	std.read(_folder, name, seek, size_, fs_cb);
+	return;
+}
+
+method void write(in string name, in bytes data, in int seek, in int size)
+{
+	fs_cb.clear();
+	std.write(_folder, name, data, seek, size, fs_cb);
+	return;
+}
+
+method void filesize(in string name)
+{
+	fs_cb.clear();
+	std.filesize(_folder, name, fs_cb);
+	return;
+}
+
+method void scandir(in string name)
+{
+	fs_cb.clear();
+	std.scandir(_folder, name, fs_cb);
+	return;
+}
+
+method void rmdir(in string name)
+{
+	fs_cb.clear();
+	std.rmdir(_folder, name, fs_cb);
+	return;
+}
+
+method void unlink(in string name) 
+{
+	fs_cb.clear();
+	std.unlink(_folder, name, fs_cb);
+	return;
+}
+
+} // class
+

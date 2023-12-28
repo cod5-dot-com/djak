@@ -1,0 +1,77 @@
+/* CLASSSSSS */
+class main {
+field int f1;
+static char s1;
+static main self;
+field int f2;
+field int f3;
+const int Cconstant1 := 10;
+const string Cconstant2 := "jm\tl";
+
+constructor main new(in int b, out int c, in int d, in int e, in int f)
+{
+	return this;
+}
+
+method int method_test1()
+{
+	var int this_is_a_varletit;
+	letit := 0;
+	lets[9%+-+-i] := 0; 
+	while (1 == 2) {
+		x();
+		break;
+		if (9 ==9) {
+			break;
+		} else if (8 == 9) {
+			break;
+		}
+	}
+	cls.callll(9,4);
+	v(i,9);
+	w();
+	return;
+	return mix.tricks("one", 9);
+	return v;
+	return main.$Constant1;
+	return v(1, 2 ,3);
+	return "hello";
+	if (1 == 1) {
+		return 'A';
+		return 'B';
+	} else {
+		return arr[1891];
+	}
+	return 2 + 3 % 4 - -56 / (10 * 4);
+}
+
+virtual string virtual_to_string()
+{
+	var int var1;
+	var int var2;
+	var int var3, var4, var5, var6;
+	if (1 != 2 && !(8 * 2 == 1 + 9 || (6 >= 7)) 
+		&& 8 <= 7 && 9 < 10 && !(10 > 8)) 
+	{
+		yes();
+	} else if (3 > 8) {
+		maybe();
+	} else {
+		no();
+	}
+
+	return "hello";
+}
+
+function void function_main()
+{
+	console.log("Hello World!");
+	if (1 == 1) {
+		return;
+	} else {
+		return;
+	}
+	return;
+}
+
+} // end of class

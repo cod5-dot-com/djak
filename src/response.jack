@@ -1,0 +1,64 @@
+
+class response {
+field int status;
+field string str;
+field bytes byt;
+
+constructor response new()
+{
+	status := 0;
+	byt := null;
+	str := null;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.free(this);
+	return;
+}
+
+method void clear()
+{
+	status := 0;
+	if (byt != null) {
+		byt.dispose();
+		byt := null;
+	}
+	if (str != null) {
+		str.dispose();
+		str := null;
+	}
+	return;
+}
+
+method void set_string(in int status_, in array data_)
+{
+	status := status_;
+	str := data_;
+	return;	
+}
+
+method void set_bytes(in int status_, in array data_)
+{
+	status := status_;
+	byt := data_;
+	return;	
+}
+
+method int get_status()
+{
+	return status;
+}
+
+method array get_string()
+{
+	return str;
+}
+
+method array get_bytes()
+{
+	return byt;
+}
+
+} // class

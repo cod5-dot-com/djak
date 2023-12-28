@@ -1,0 +1,17 @@
+class array {
+field int dummy;
+function array new(in int size)
+{
+	var array a;
+	a := std.alloc(size);
+	a[-1] := array.$_DcidD; // class ID
+	return a;
+}
+
+virtual void dispose()
+{
+	std.free(this);
+	return;
+}
+} // class
+

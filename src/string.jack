@@ -1,0 +1,189 @@
+class string {
+field array _str;
+field int size;
+
+constructor string new(in int alloc)
+{
+	_str := null;
+	std.stralloc(this, alloc + 1);
+	size := alloc;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.strfree(this);
+	std.free(this); 
+	return;
+}
+
+method array get_buf()
+{
+	return _str;
+}
+
+method void set_buf(in array b)
+{
+	_str := b;
+	return;
+}
+
+method int get_size()
+{
+	return size;
+}
+
+method void set_size(in int ns)
+{
+	var string ops;
+	var array b;
+	if (size > ns) {
+		return;
+	}
+	ops := string.new(ns+1);
+	std.append(ops, 0,  this, 0, size);
+	b := _str;
+	_str := ops.get_buf();
+	ops.set_buf(b);
+	ops.dispose();
+	size := ns;
+	return;
+
+}
+
+method int length()
+{
+	return std.strlen(this);
+}
+
+method void set_int(in int num)
+{
+	return std.str_set_int(this, size, num);
+}
+
+method void set(in string src)
+{
+	var int sl;
+	sl := std.strlen(src);
+	if (size < sl) {
+		std.strfree(this);
+		std.stralloc(this, sl+1);
+		size := sl;
+	}
+	std.str_set_at(this, 0, '\0');
+	std.append(this, 0, src, 0, sl);
+	return;
+}
+
+method void add_char(in int num)
+{
+	var int sl, tl, ns, i;
+	sl := 6;
+	tl := std.strlen(this);
+		
+	ns := sl + tl + 1;
+	i := 0;
+	if (size <= ns) {
+		ns := ns + 8;
+		set_size(ns);
+	}
+	i := tl;
+	std.str_set_at(this, i, num); // FIXME UTF-8
+	i := i + 1;
+	std.str_set_at(this, i, '\0');
+	return;
+}
+
+method void add(in string src)
+{
+	add_at(std.strlen(this), src);
+	return;
+}
+
+method void add_at(in int tl, in string src)
+{
+	var int sl, ns;
+	sl := std.strlen(src);
+	ns := sl + tl + 1;
+	if (ns >= size) {	
+		set_size(ns * 2);
+	}
+	std.append(this, tl, src, 0,  ns);
+	return sl + tl;
+}
+
+
+method int indexof(in int start_pos, in string needle)
+{
+	return std.strindex(this, start_pos, needle);
+}
+
+method void substr(in int start_pos, in int length_, out string result)
+{
+	var int len;
+
+	len := std.strlen(this);
+	if (start_pos < 0) {
+		start_pos := start_pos + len;
+	}
+	if (start_pos < 0) {
+		start_pos := 0;
+	}
+	if (length_ < 0) {
+		length_ := len + length_ - start_pos;
+	} else if (length_ == 0) {
+		length_ := len;
+	}
+
+	if ((start_pos >= len) || (length_ < 1)) {
+		result.set("");
+		return;
+	}	
+	result.set_size(length_ + 1);
+	std.str_set_at(result, 0, '\0');
+	std.append(result, 0, this, start_pos, length_);
+	return;
+}
+
+
+/** the returned string is alloced and must be disposed */
+method string to_string()
+{
+	var string str;
+	str := string.new(length() + 1);
+	str.set(this);
+	return str;
+}
+
+method int to_int()
+{
+	return std.str_toint(this);	
+}
+
+method int compare(in string other)
+{
+	return std.strcmp(this, other);
+}
+
+method int get_hash()
+{
+	return std.strhash(this);
+}
+
+method int get_at(in int at)
+{
+	if ((at < size) && (size >= 0)) {
+		return std.str_get_at(this,at);
+	}
+	return '\0';
+}
+
+method void set_at(in int at, in int v)
+{
+	if ((at < size) && (size >= 0)) {
+		std.str_set_at(this, at, v); // FIXME UTF-8
+	}
+	return;
+}
+
+} // class

@@ -1,0 +1,50 @@
+
+class Atoken {
+field int type;
+field string _data;
+field int line;
+field string file_;
+field Atoken next;
+
+constructor Atoken new(in int type1, in string _data1, 
+	in int line1, in string file1)
+{
+	type := type1;
+	_data := _data1;
+	line := line1;
+	file_ := file1;
+	next := null;
+	return this;
+}
+
+
+virtual void dispose()
+{
+	_data.dispose();
+	std.free(this);
+	return;
+}
+
+method string get_data()
+{
+	return _data;
+}
+
+method string get_type()
+{
+	return type;
+}
+
+
+method int get_line()
+{
+	return line;
+}
+
+
+method string get_file()
+{
+	return file_;
+}
+
+} // class

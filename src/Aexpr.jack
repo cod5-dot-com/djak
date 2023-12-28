@@ -1,0 +1,294 @@
+
+class Aexpr {
+field int op;
+field int prec;
+field int asso;
+field Aexpr left;
+field Aexpr right;
+field Aexpr parent;
+field string value;
+field string value2;
+field int flags;
+field Atoken origin;
+field buffer data;
+
+constructor Aexpr new(in int op_, in int precedence_, in int associativity_)
+{
+	op := op_;
+	prec := precedence_;
+	asso := associativity_;
+	parent := null;
+	left := null;
+	right := null;
+	value := null;
+	value2 := null;
+	flags := 0;
+	origin := null;
+	data := null;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.free(this);
+	return;
+}
+
+method void clear_data()
+{
+	if (data != null) {
+		data.dispose();
+	}
+	data := null;
+	return;
+}
+
+method void add_data(in string value)
+{
+	if (value == null) {
+		return;
+	}
+	if (value.length() < 1) {
+		return;
+	}
+	if (data == null) {
+		data := buffer.new(3);
+	}
+	data.push(value);
+	return;
+}
+
+method buffer get_data()
+{
+	return data;
+}
+
+method void merge_data(in buffer buf)
+{
+	var int l;
+	l := 1;
+	if (buf != null) {
+		l := buf.length();
+	}
+	if (data == null) {
+		data := buffer.new(l);	
+	}
+	if (buf == null) {
+		return;
+	}
+	data.append(buf);
+	return;
+}
+
+method string data_to_string(in string s)
+{
+	var int l;
+	var int i;
+	var int ol;
+	if (data == null) {
+		return s;
+	}
+	ol := s.length();
+	l := data.length();
+	i := 0;
+	while (i < l) {
+		ol := s.add_at(ol, data.get_at(i));
+		i := i + 1;
+	}
+	return s;
+}
+
+method Atoken get_origin()
+{
+	return origin;
+}
+
+method void set_origin(in Atoken orig)
+{
+	origin := orig;
+	return;
+}
+
+method Aexpr get_right()
+{
+	return right;
+}
+
+method void set_right(in Aexpr r)
+{
+	right := r;
+	return;
+}
+
+
+method Aexpr get_left()
+{
+	return left;
+}
+
+method void set_left(in Aexpr l)
+{
+	left := l;
+	return;
+}
+
+method Aexpr get_parent()
+{
+	return parent;
+}
+
+method void set_parent(in Aexpr p)
+{
+	parent := p;
+	return;
+}
+
+method string get_value2()
+{
+	return value2;
+}
+
+method void set_value2(in string v)
+{
+	value2 := v;
+	return;
+}
+
+method string get_value()
+{
+	if (data == null) {
+		return null;
+	}
+	return data.get_at(0);
+}
+
+method void set_value(in string v)
+{
+	// FIXME
+	if (data != null) {
+		data.dispose();
+	}
+	data := buffer.new(1);
+	data.push(v);
+	//value := v;
+	return;
+}
+
+method int get_op()
+{
+	return op;
+}
+
+method int get_flags()
+{
+	return flags;
+}
+
+method void set_flags(in int flags_)
+{
+	flags := flags_;
+	return;
+}
+
+method void set_precedence(in int p) {
+	prec := p;
+	return;
+}
+
+method void get_precedence() {
+	return prec;
+}
+
+method void get_associativity() {
+	return asso;
+}
+
+
+method Aexpr close(in int op_)
+{
+	
+	var Aexpr cur;
+	cur := this;
+	while (cur != null) {
+		if (cur.get_op() == op_) {
+			return cur;
+		}
+		cur := cur.get_parent();
+	}
+	return null;
+}
+
+method Aexpr add(in Aexpr ex)
+{
+	var int pre;
+	var int ass;
+	var Aexpr cur;
+	var Aexpr ri;
+	var Aexpr le;
+	var Aexpr par;
+	var Aexpr child;
+	var int p;
+	pre := ex.get_precedence();
+	ass := ex.get_associativity();
+	cur := this;
+	par := cur.get_parent();
+	child := null;
+	while (par != null) {
+		p := cur.get_precedence();
+		if (p > pre) {
+			child := cur;
+			cur := par;
+			par := cur.get_parent();
+		} else {
+			if ((p == pre) && (ass == Aclass.$Clr)) {
+				child := cur;
+				cur := par;
+				par := cur.get_parent();
+			} else {
+				par := null;
+			}
+		}
+	}
+	ex.set_parent(cur);
+	ri := cur.get_right();
+	if (ri == child) {
+		if (ri != null) {
+			ex.set_left(ri);
+			ri.set_parent(ex);
+		}
+		cur.set_right(ex);
+	} else {
+		le := cur.get_left();
+		if (le != null) {
+			ex.set_left(le);
+			le.set_parent(ex);
+		}
+		cur.set_left(ex);
+	}
+	return ex;
+}
+
+method void dump(in int depth)
+{
+	var int i;
+	if (left != null) {
+		left.dump(depth + 1);
+	}
+	i := depth;
+	while (i > 0) {
+		i := i - 1;
+		console.log_str(" ");
+	}
+	if (value != 0) {
+		console.log_str(value);
+	}
+	console.log_int(op);
+	console.log("");
+	if (right != null) {
+		right.dump(depth + 1);
+	}
+	return;
+}
+
+} // class
+

@@ -1,0 +1,209 @@
+
+class main {
+const int Cblock := 10;
+const string Chello := " --- The Jack 3.0.3 ---";
+const int Cc := 0;
+const int Cjs := 1;
+const int Cphp := 2;
+
+function void copyto(in string f, in string output)
+{
+		var file fd;
+		var response res;
+		var bytes data;
+		var int n;
+		var int i;
+		var int off;
+		console.log_str("Including : ");
+		console.log(f);
+		res := response.new();
+		fd := file.new("", res);
+		fd.read(f, 0, main.$Cblock);
+		off := 0;
+		while (res.get_status() == 200) {
+			data := res.get_bytes();
+			n := data.get_size();
+			i := 0;
+			while (i < n) {
+				output.add_char(data.get_at(i));
+				i := i + 1;
+			}
+			off := off + main.$Cblock;
+			fd.read(f, off, main.$Cblock);
+		}
+		fd.dispose();
+		res.dispose();
+		return;
+}
+
+
+function void process_file(in string f, in Alexer lex)
+{
+		var string tmp;
+		var file fd;
+		var response res;
+		var bytes data;
+		var int n;
+		var int i;
+		var int off;
+
+		console.log_str("Compiling : ");
+		console.log(f);
+		lex.begin(f);
+		res := response.new();
+		fd := file.new("", res);
+		fd.read(f, 0, main.$Cblock);
+		off := 0;
+		tmp := string.new(10000);
+		while (res.get_status() == 200) {
+			data := res.get_bytes();
+			n := data.get_size();
+			i := 0;
+			while (i < n) {
+				tmp.add_char(data.get_at(i));
+				i := i + 1;
+			}
+			lex.add(tmp);
+			tmp.set("");
+			off := off + main.$Cblock;
+			fd.read(f, off, main.$Cblock);
+		}
+		fd.dispose();
+		res.dispose();
+		lex.finish();
+		return;
+}
+
+function void main()
+{
+		var string str;
+		var string tmp;
+		var array args;
+		var file fd;
+		var response res;
+		var string data;
+		var int n;
+		var int i;
+		var int end;
+		var int start;
+		var int len;
+		var Alexer lex;
+		var Aparser par;
+		var Aemmiter emi;
+		var string head;
+		var string body;
+		var string to;
+		var int l;
+		var int lang;
+
+		lang := main.$Cjs;
+		console.log(main.$Chello);
+
+		args := std.get_args();
+		n := std.get_argc();
+		if (n != 2) {
+			console.log("wrong number of command line arguments");
+			std.exit(-1);
+		}
+		head := string.new(2048);
+		body := string.new(2048);
+		str := args[1];
+		to := string.new(20);
+		to.add(str);
+		if (lang == main.$Cc) {
+			to.add(".jack.c");
+		} else {
+			to.add(".jack.js");
+		}
+		res := response.new();
+		fd := file.new("", res);
+		fd.scandir(str);
+		tmp := string.new(100);
+		lex := Alexer.new();
+		par := Aparser.new();
+		if (lang == main.$Cjs) {
+			emi := Ajavascript.new();
+		} else {
+			emi := Aemmiter.new();
+			//emi := Acanonical.new();
+		}
+		if (res.get_status() == 200) {
+			data := res.get_string();
+			len := data.length();
+			i := 0;
+			start := 0;
+			i := data.indexof(start, "\n");
+			while ((i >= 0) && (start < len)) { 
+				data.substr(start, i - start, tmp);
+				end := i - start;
+				if (tmp.indexof(0, ".jack") == (end - 5)) {
+					main.process_file(tmp, lex);
+					par.parse(lex);	
+					emi.emmit(par);
+					par.release();
+				} else if (lang == main.$Cc &&
+					tmp.indexof(0, ".h") == (end - 2)) 
+				{
+					main.copyto(tmp, head);
+				} else if (lang == main.$Cc &&
+					tmp.indexof(0, ".c") == (end - 2)) 
+				{
+					main.copyto(tmp, body);
+				} else if (lang == main.$Cjs &&
+					tmp.indexof(0, ".js") == (end - 2)) 
+				{
+					main.copyto(tmp, body);
+				}
+				start := i + 1;
+				i := data.indexof(start, "\n");
+				tmp.set("");
+			}
+		}
+		//emi.emmit(par);
+		//par.release();
+		emi.gen_virtuals();
+		fd.unlink(to);
+		i := 0;
+		str := head;
+		l := str.length();
+		if (l > 0) {
+			fd.write(to, str.get_buf(), i, l);
+			if (res.get_status() != 200) {
+				std.exit(-1);
+			}
+		}
+		i := i + l;
+		str := emi.get_head();
+		l := str.length();
+		if (l > 0) {
+			fd.write(to, str.get_buf(), i, l);
+		}
+		i := i + l;
+		str := emi.get_mid();
+		l := str.length();
+		if (l > 0) {
+			fd.write(to, str.get_buf(), i, l);
+		}
+		i := i + l;
+		str := body;
+		l := str.length();
+		if (l > 0) {
+			fd.write(to, str.get_buf(), i, l);
+		}
+		i := i + l;
+		str := emi.get_data();
+		l := str.length();
+		if (l > 0) {
+			fd.write(to, str.get_buf(), i, l);
+		}
+		console.log_str("Output to : ");
+		console.log(to);
+		to.dispose();
+		fd.dispose();
+		res.dispose();
+		lex.dispose();
+		par.dispose();
+		emi.dispose();
+		return;
+}
+}

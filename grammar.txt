@@ -1,0 +1,146 @@
+// Zeudjak grammar
+// ? means 0 or 1 occurence
+// * means 0 or more occurences
+// | means "or"
+// op14lr means operator with precedence 14 and left-to-right associativity
+
+keyword: 	"class" | 
+		"constructor" | "function" | "method" | "virtual" |
+		"field" | "static" | "const" | "var" | "in" | "out" | "io" |
+		"int" | "char" | "void" |
+		"null" | "this" |
+		"if" | "else" | "while" |
+		"break" | "return"
+
+symbol:		"{" | "}" | "(" | ")" | "[" | "]" | "<" | ">" |
+		"." | "," | ";" | ":" | ".$" |
+		"+" | "-" | "*" | "/" | "%" | 
+		":=" | "!" |
+		"&&" | "||" |
+		"==" | "<=" | ">=" | "!=" 
+
+digit:		"0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+underscore:	"_"
+
+letter:		"a" | "b" |  "c" | "d" |  "e" | "f" |
+		"g" | "h" |  "i" | "j" |  "k" | "l" |
+		"m" | "n" |  "o" | "p" |  "q" | "r" |
+		"s" | "t" |  "u" | "v" |  "w" | "x" |
+		"y" | "z" |
+		"A" | "B" | "C" | "D" | "E" | "F" | "G"
+
+character:	letter | digit | "\" | "&" | ";"
+
+int_const:	 (digit)*
+
+str_const:	'"' (charcter)* '"'
+
+identifier:	(letter | underscore) (letter | digit | underscore)*
+
+char_const:	"'" character "'"
+
+tern_const:	"#" ("0" | "1" | "\" | "z")*
+
+key_const:	"null" | "this"
+
+constant:	int_const | str_const | char_const | tern_const | "null" 
+
+op:		op14lr | op13lr 
+
+comp_op:	op11lr | op10lr | op10rl 
+
+bool_op:	op6lr | op5lr
+
+op14lr:		"*" | "/" | "%" 
+
+op13lr:		"+" | "-" 
+
+op11lr:		">=" | "<=" | ">" | "<"
+
+op10lr:		"==" 
+
+op10rl:		"!="
+
+op6lr:		"&&"
+
+op5lr:		"||" 
+
+unary_op:	uop16rl
+
+uop16rl:	"+" | "-"
+
+not_op:		nop16rl
+
+nop16rl:	"!"  
+
+root:		class_dec*
+
+class_dec:	"class" class_name "{" class_var_dec* 
+		clas_const_dec* subroutine_dec* "}"
+
+class_var_dec:	("static" | "field") type var_name ("," var_name)* ";"
+
+clas_const_dec: "const" type var_name ":=" constant ";"
+
+type:		"int" | "char" | class_name
+
+subroutine_dec:	("constructor" | "function" | "method" | "virtual") 
+		("void" | type) subrout_name "(" param_list ")" subrout_body
+
+param_list:	((direction type var_name) ("," direction type var_name)*)?
+
+direction:	"in" | "out" | "io"
+
+subrout_body:	"{" var_dec* statements "}"
+
+var_dec:	"var" type var_name ("," var_name)* ";"
+
+class_name:	identifier
+
+subrout_name:	identifier
+
+var_name:	identifier
+
+statements:	statement*
+
+statement:	dolet_statem |
+		if_statem |
+		while_statem |
+		("break" ";") |
+		return_statem 
+
+dolet_statem:	let_statem |
+		do_statem
+
+let_statem:	var_name ("[" expression "]")? ":=" expression ";"
+
+do_statem:	subrout_call
+
+if_statem:	"if" "(" bool_expr ")" "{" statments "}" else_statem? 
+
+else_statem:	"else" (("{" statements "}") | if_statem)
+
+while_statem:	"while" "(" bool_expr ")" "{" statements "}"
+
+return_statem:	"return" expression? ";"
+
+expression:	term (op term)*
+
+bool_expr:	bool_term (bool_op bool_term)*
+
+bool_term:	(expression comp_op expression) |
+		(not_op? "(" bool_expr ")")
+
+term:		int_const | str_const | char_const | key_const |
+		var_name | (var_name "[" expression "]") |
+		subrout_call | ("(" expression ")") | (unary_op term) |
+		(class_name ".$" var_name)
+		
+
+subrout_call:	((class_name | var_name) "." sub_call) | sub_call
+
+sub_call:	subrout_name "(" expr_list ")"
+
+expr_list:	(expression ("," expression)*)?
+

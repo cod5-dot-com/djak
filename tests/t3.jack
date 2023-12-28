@@ -1,0 +1,39 @@
+class fi {
+field int n;
+static string sts;
+field string str;
+const string jml := "jml";
+
+function int funct()
+{
+	return 8;
+}
+
+constructor fi new(in int a, in maxi b)
+{
+	var int t;
+	var top b;
+	n := a[3];
+	t := bob();
+	str.add("", n, a, t);
+	bo.yo();
+	fi.funct();
+	n := maxo.$go;
+	m := "ioioio";
+	sts := "jml";
+	return this;
+}
+
+virtual int bob(in int k)
+{
+	return 1;
+}
+}
+
+class k {
+virtual int bob(in int koo)
+{
+	return 3;
+}
+}
+

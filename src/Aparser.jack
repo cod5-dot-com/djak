@@ -1,0 +1,1132 @@
+class Aparser implements object {
+field buffer _states;
+field Alexer lex;
+field Atoken lookahead;
+field string lookstring;
+field int status;
+field int debug;
+field Aclass _class;
+
+const int Croot := 1;
+const int Cclass_dec := 2;
+const int Cstatement := 3;
+const int Cstatements := 4;
+const int Cexpression := 5;
+const int Creturn_statem1 := 6;
+const int Cexpression1 := 7;
+const int Cterm := 8;
+const int Cterm1 := 9;
+const int Cterm2 := 10;
+const int Cexpr_list := 11;
+const int Cexpr_list1 := 12;
+const int Csub_call1 := 13;
+const int Clet_statem1 := 14;
+const int Clet_statem2 := 15;
+const int Cdo_statem1 := 16;
+const int Cwhile_statem1 := 17;
+const int Cwhile_statem2 := 18;
+const int Csubrout_body1 := 19;
+const int Csubroutine_dec := 20;
+const int Cclass_dec1 := 21;
+const int Cif_statem1 := 22;
+const int Cif_statem2 := 23;
+//const int Cbool_expr := 24;
+//const int Cbool_expr1 := 25;
+//const int Cbool_term := 26;
+//const int Cbool_term1 := 27;
+//const int Ccomp_op := 28;
+const int Celse_statem := 29;
+const int Celse_statem1 := 30;
+const int Celse_statem2 := 31;
+
+
+constructor Aparser new()
+{
+	debug := 0;
+	status := 0;
+	lex := null;
+	_states := buffer.new(8);
+	_class := null;
+	push(Aparser.$Croot);
+	return this;
+}
+
+virtual void dispose()
+{
+	_states.dispose();
+	std.free(this);
+	return;
+}
+
+method string get_data()
+{
+	return lookstring;
+}
+
+method Aclass get_next()
+{
+	return _class;
+}
+
+method void release()
+{
+	var Aclass c;
+	c := _class;
+	
+	while (c != null) {
+		_class := c.get_next();
+		c.dispose();
+		c := _class;
+	}
+	_class := null;
+	return;
+}
+
+method int parse(in Alexer lexer_)
+{
+	lex := lexer_;
+	while (lex.empty() == 0) {
+		lookahead := lex.get_at(0);
+		lookstring := lookahead.get_data();
+		if ((lookahead.get_type() == Alexer.$Cnewline) 
+		 		|| (lookahead.get_type() == Alexer.$Ccomment))
+		{
+			eat();
+		} else {
+			state_machine();
+		}
+		if (lex.empty() != 0) {
+			return 0;
+		}
+		if (lookahead.get_type() == Alexer.$Cend) {
+			eat();
+			return 0;
+		}
+	}
+	return 0;
+}
+
+method void error(in string e)
+{
+	
+	console.log_str(lookahead.get_file());
+	console.log_str(": found '");
+	console.log_str(lookahead.get_data());
+	console.log_str("' at line(");
+	console.log_int(lookahead.get_line());
+	console.log_str("): ");
+	console.log(e);
+	std.exit(-1);
+	status := -1;
+	return;
+}
+
+method void push(in int step_)
+{
+	_states.push(step_);
+	return;
+}
+
+
+method void pop()
+{
+	_states.pop();
+	return;
+}
+
+method int root()
+{
+	if (status != 0) {
+		return -1;
+	}
+	push(Aparser.$Cclass_dec);
+	return 0;
+}
+
+method void class_dec()
+{
+	var Aclass c;
+
+	if (match_id("class") == 0) {
+		error("expecting 'class' keyword");
+		return;
+	}
+	eat();
+	if (match_id(null) == 0) {
+		error("expecting identifier");
+		return;
+	}
+
+	c := _class;
+	_class := Aclass.new(lookahead);
+	_class.set_next(c);
+	eat();
+
+	if (match_id("implements") != 0) {
+		eat();
+		if (match_id(null) == 0) {
+			error("expecting class identifier");
+			return;
+		}
+		_class.add_implement(lookahead);
+		eat();
+		while (match_op(",") != 0) {
+			eat();
+			if (match_id(null) == 0) {
+				error("expecting class identifier");
+				return;
+			}
+			_class.add_implement(lookahead);
+			eat();
+		}
+	}
+
+	if (match_op("{") == 0) {
+		error("expecting '{'");
+		return;
+	}
+	eat();
+	while (status >= 0) {
+		class_var_dec();
+	}
+	status := 0;
+	while (status >= 0) {
+		clas_const_dec();
+	}
+	status := 0;
+	push(Aparser.$Cclass_dec1);
+	push(Aparser.$Csubroutine_dec);
+	return;
+}
+
+method void class_dec1()
+{
+	status := 0;
+	if (match_op("}") == 0) {
+		error("expecting '}'");
+		return;
+	}
+	eat();
+	pop();
+	return;
+}
+
+method void class_var_dec()
+{
+	if (match_id("field") != 0) {
+		_class.prepare_kind(Aclass.$Cfield);
+	} else if (match_id("static") != 0) {
+		_class.prepare_kind(Aclass.$Cstatic);
+	} else {
+		status := -1;
+		return;
+	}
+	eat();
+
+	type();
+
+	var_name();	
+
+	while (match_op(",") != 0) {
+		_class.valid_member_name();
+		var_name();
+	}
+	if (match_op(";") == 0) {
+		error("';' expected.");
+		return;
+	}
+	_class.valid_member_name();
+	eat();
+	return;
+}
+
+method void var_name()
+{
+	if (match_id(null) != 0) {
+		_class.prepare_set_name(lookahead);
+		eat();
+		return;
+	}
+	error("Name of variable expected.");
+	return;
+}
+
+method void type() 
+{
+	if (match_id("int") != 0) {
+		_class.prepare_type(Aclass.$Cint);
+//	} else if (match_id("bytes") != 0) {
+//		_class.prepare_type(Aclass.$Cbytes);
+	} else if (match_id("void") != 0) {
+		_class.prepare_type(Aclass.$Cvoid);
+	} else if (match_id(null) != 0) {
+		_class.prepare_type_identifier(lookahead);
+	} else {
+		error("Type expected.");
+		return;
+	}
+	eat();
+	return;
+}
+
+method void clas_const_dec()
+{
+	if (match_id("const") != 0) {
+		_class.prepare_kind(Aclass.$Cconst);
+	} else {
+		status := -1;
+		return;
+	}
+	eat();
+
+	type();
+
+	var_name();	
+
+	if (match_op(":=") == 0) {
+		error("':=' expected.");
+		return;
+	}
+	eat();
+
+	if (match_op(";") == 0) {
+		_class.finish_const(lookahead);
+	} else {
+		error("Expected constant initialiser.");
+		return;
+	}
+	eat();
+	if (match_op(";") == 0) {
+		error("';' expected.");
+		return;
+	}
+	eat();
+	return;
+}
+
+method void subroutine_dec()
+{
+	if (status != 0) {
+		pop();
+		return;
+	}
+	if (match_id("constructor") != 0) {
+		_class.prepare_kind(Aclass.$Cconstructor);
+	} else if (match_id("function") != 0) {
+		_class.prepare_kind(Aclass.$Cfunction);
+	} else if (match_id("method") != 0) {
+		_class.prepare_kind(Aclass.$Cmethod);
+	} else if (match_id("virtual") != 0) {
+		_class.prepare_kind(Aclass.$Cvirtual);
+	} else {
+		pop();
+		status := -1;
+		return;
+	}
+	eat();
+	if (match_id("void") != 0) {
+		_class.prepare_type(Aclass.$Cvoid);
+		eat();
+	} else {
+		type();
+	}
+
+	var_name(); // subrout_name	
+
+	_class.valid_member_name();
+
+	if (match_op("(") == 0) {
+		error("'(' expected.");
+		return;
+	}
+	eat();
+
+	param_list();
+
+	if (match_op(")") == 0) {
+		error("')' expected.");
+		return;
+	}
+	eat();
+
+	subrout_body();
+
+
+	return;
+}
+
+method void param_list()
+{
+	if (match_op(")") != 0) {
+		return;
+	}
+	
+	direction();
+	
+	type();
+
+	var_name(); 
+	
+	while (match_op(",") != 0) {
+		_class.valid_param();
+		eat();
+		direction();
+		type();
+		var_name();
+	}	
+	_class.valid_param();
+	return;
+}
+
+method void direction()
+{
+	if (match_id("in") != 0) {
+		_class.prepare_kind(Aclass.$Cin);
+		eat();
+		return;
+	} else if (match_id("out") != 0) {
+		_class.prepare_kind(Aclass.$Cout);
+		eat();
+		return;
+	} else if (match_id("io") != 0) {
+		_class.prepare_kind(Aclass.$Cio);
+		eat();
+		return;
+	}
+	error("Expected 'in/out/io'.");
+	return;
+}
+	
+method void subrout_body()
+{
+	if (match_op("{") == 0) {
+		error("'{' expected.");
+		return;
+	}
+	eat();
+
+	while (status == 0) {
+		var_dec();
+	}
+	status := 0;
+
+	push(Aparser.$Csubrout_body1);
+	push(Aparser.$Cstatements);
+	return;
+}
+
+method void subrout_body1()
+{
+	pop();
+	if (match_op("}") == 0) {
+		error("'}' expected at end of subroutine body.");
+		return;
+	}
+	eat();
+	_class.finish_subroutine();
+	return;
+}
+
+method void var_dec()
+{
+	if (match_id("var") == 0) {
+		status := 1;
+		return;
+	}
+	eat();
+	_class.prepare_kind(Aclass.$Cvar);
+	type();
+	var_name(); 
+	
+	while (match_op(",") != 0) {
+		_class.valid_var();
+		eat();
+		var_name();
+	}	
+	_class.valid_var();
+	if (match_op(";") == 0) {
+		error("';' expected at end of variable declaration");
+		return;
+	}
+	eat();
+	return;
+}
+
+method void statements()
+{
+	if (status == 0) {
+		push(Aparser.$Cstatement);
+		return;
+	}
+	if (status > 0) {
+		status := 0;
+	}
+	pop();
+	return;
+}
+
+method void statement()
+{
+	var int r;
+	pop();
+	r := 0;
+	if (match_id("break") != 0) {
+		r := 1;
+		_class.begin_stm(Aclass.$Cbreak, lookahead);
+		eat();
+		if (match_op(";") == 0) {
+			error("';' expected after break");
+			return;
+		}
+		_class.finish_stm();
+		eat();
+		return;
+	}
+	if (r == 0) { r := if_statem(Aclass.$Cif); }
+	if (r == 0) { r := while_statem(); }
+	if (r == 0) { r := return_statem(); }
+	if (r == 0) { r := dolet_statem(); }
+	if (r == 0) {
+		// end of subroutine or end of statement body
+		status := 1;
+	}
+	return;
+}
+
+method int if_statem(in int type_)
+{
+	if (match_id("if") == 0) {
+		return 0;
+	}
+	_class.begin_stm(type_, lookahead);
+	eat();
+	if (match_op("(") == 0) {
+		error("'(' expected after if.");
+		return 1;
+	}
+	eat();
+	push(Aparser.$Cif_statem1);
+	push(Aparser.$Cexpression);
+	_class.begin_expr(lookahead);
+
+	return 1;
+}
+
+method void if_statem1()
+{
+	pop();
+	if (match_op(")") == 0) {
+		error("')' expected after if condition.");
+		return;
+	}
+	_class.finish_expr();
+	eat();
+	if (match_op("{") == 0) {
+		error("'{' expected after if ().");
+		return;
+	}
+	eat();
+	push(Aparser.$Celse_statem);
+	push(Aparser.$Cstatements);
+	return;
+}
+
+method void else_statem()
+{
+	pop();
+	if (match_op("}") == 0) {
+		error("'}' expected after if body.");
+		return;
+	}
+	eat();
+	if (match_id("else") == 0) {
+		_class.finish_stm();
+		return;
+	}
+	eat();
+	
+	if (match_id("if") != 0) {
+		_class.finish_stm();
+		if_statem(Aclass.$Celseif);
+		return;
+	}
+
+	_class.begin_else(Aclass.$Celse);
+
+	if (match_op("{") == 0) {
+		error("'{' expected after else.");
+		return;
+	}
+	eat();
+	push(Aparser.$Celse_statem1);
+	push(Aparser.$Cstatements);
+	return;
+}
+
+method void else_statem1()
+{
+	pop();
+	if (match_op("}") == 0) {
+		error("'}' expected after else body.");
+		return;
+	}
+	_class.finish_stm();
+	eat();
+	return;
+}
+
+method int while_statem()
+{
+	if (match_id("while") == 0) {
+		return 0;
+	}
+	_class.begin_stm(Aclass.$Cwhile, lookahead);
+	eat();
+	if (match_op("(") == 0) {
+		error("'(' expected after while.");
+		return 1;
+	}
+	eat();
+	_class.begin_expr(lookahead);
+	push(Aparser.$Cwhile_statem1);
+	push(Aparser.$Cexpression);
+	return 1;
+}
+
+method void while_statem1()
+{
+	pop();
+	if (match_op(")") == 0) {
+		error("')' expected after while condition.");
+		return;
+	}
+	_class.finish_expr();
+	eat();
+	if (match_op("{") == 0) {
+		error("'{' expected after while ().");
+		return;
+	}
+	eat();
+	push(Aparser.$Cwhile_statem2);
+	push(Aparser.$Cstatements);
+	return;
+}
+
+method void while_statem2()
+{
+	pop();
+	if (match_op("}") == 0) {
+		error("'}' expected after while body.");
+		return;
+	}
+	_class.finish_stm();
+	eat();
+	return;
+}
+
+method int return_statem()
+{
+	if (match_id("return") == 0) {
+		return 0;
+	}
+	_class.begin_stm(Aclass.$Creturn, lookahead);
+	eat();
+	if (match_op(";") != 0) {
+		_class.finish_stm();
+		eat();
+	} else {
+		_class.begin_expr(lookahead);
+		push(Aparser.$Creturn_statem1);
+		push(Aparser.$Cexpression);
+	}
+	return 1;
+}
+
+
+method void return_statem1()
+{
+	if (match_op(";") != 0) {
+		_class.finish_expr();
+		_class.finish_stm();
+		eat();
+		pop();
+		return;
+	}
+	error("';' expected");
+	return;
+}
+
+method int dolet_statem()
+{
+	var Atoken id;
+	if (match_id(null) == 0) {
+		return 0;
+	}
+	id := lookahead;
+	eat();	
+	if ((match_op(":=") != 0) || (match_op("[") != 0)) {
+		_class.begin_stm(Aclass.$Clet, lookahead);
+		return let_statem(id);
+	} else if (match_op("}") == 0) {
+		_class.begin_stm(Aclass.$Cdo, lookahead);
+		return do_statem(id);
+	}
+	return 0;
+}
+
+method int let_statem(in Atoken id)
+{
+	
+	if (match_op(":=") != 0) {
+		_class.expr_var(id.get_data(), lookahead);
+		_class.expr_op(Aclass.$Cassign, lookahead);
+		eat();
+		push(Aparser.$Clet_statem1);
+		push(Aparser.$Cexpression);
+		return 1;
+	} else if (match_op("[") != 0) {
+		_class.expr_open_index(id.get_data(), lookahead);
+		eat();
+		push(Aparser.$Clet_statem2);
+		push(Aparser.$Cexpression);
+		return 1;
+	}
+	return 0;
+}
+
+method void let_statem1()
+{
+	pop();
+	if (match_op(";") == 0) {
+		error("';' expected at end of let statement");
+		return;
+	}
+	_class.finish_expr();
+	_class.finish_stm();
+	eat();
+	return;
+}
+
+method void let_statem2()
+{
+	pop();
+	if (match_op("]") == 0) {
+		error("']' expected in left side of let statement");
+		return;
+	}
+	_class.expr_close_index();
+	eat();
+	if (match_op(":=") != 0) {
+		_class.expr_op(Aclass.$Cassign, lookahead);
+		eat();
+		push(Aparser.$Clet_statem1);
+		push(Aparser.$Cexpression);
+		return;
+	}
+	error("':=' expected in let statement");
+	return;
+}
+
+method int do_statem(in Atoken id)
+{
+	push(Aparser.$Cdo_statem1);
+	return subrout_call(id);
+}
+
+method void do_statem1()
+{
+	pop();
+	if (match_op(";") == 0) {
+		error("';' expected at end of do statement");
+		return;
+	}
+	_class.finish_expr();
+	_class.finish_stm();
+	eat();
+	return;
+}
+
+method void expression()
+{
+	pop();
+	push(Aparser.$Cexpression1);
+	push(Aparser.$Cterm);
+	return;
+}
+
+method void expression1()
+{
+	if (op() != 0) {
+		push(Aparser.$Cterm);
+		return;
+	} else {
+		// validate expression
+		pop();
+	}
+	return;
+}
+
+method int op()
+{
+	if (match_op("+") != 0) {
+		_class.expr_op(Aclass.$Cadd, lookahead);
+	} else if (match_op("-") != 0) {
+		_class.expr_op(Aclass.$Csub, lookahead);
+	} else if (match_op("*") != 0) {
+		_class.expr_op(Aclass.$Cmult, lookahead);
+	} else if (match_op("/") != 0) {
+		_class.expr_op(Aclass.$Cdiv, lookahead);
+	} else if (match_op("%") != 0) {
+		_class.expr_op(Aclass.$Cmodulo, lookahead);
+	} else if (match_op("&&") != 0) {
+		_class.expr_op(Aclass.$Clogicaland, lookahead);
+	} else if (match_op("||") != 0) {
+		_class.expr_op(Aclass.$Clogicalor, lookahead);
+	} else if (match_op("==") != 0) {
+		_class.expr_op(Aclass.$Cequal, lookahead);
+	} else if (match_op("!=") != 0) {
+		_class.expr_op(Aclass.$Cnotequal, lookahead);
+	} else if (match_op(">=") != 0) {
+		_class.expr_op(Aclass.$Clargerequal, lookahead);
+	} else if (match_op("<=") != 0) {
+		_class.expr_op(Aclass.$Clesserequal, lookahead);
+	} else if (match_op(">") != 0) {
+		_class.expr_op(Aclass.$Clarger, lookahead);
+	} else if (match_op("<") != 0) {
+		_class.expr_op(Aclass.$Clesser, lookahead);
+	} else {
+		return 0;
+	}
+	eat();
+	return 1;
+}
+
+method void term()
+{
+	var Atoken id;
+	pop();
+	if (match_id("this") != 0) {
+		// key_const
+		_class.expr_term(Aclass.$Cthis, lookahead);
+		eat();
+	} else if (match_id("null") != 0) {
+		// key_const
+		_class.expr_term(Aclass.$Cnull, lookahead);
+		eat();
+	} else if (lookahead.get_type() == Alexer.$Cidentifier) {
+		id := lookahead;
+		eat();
+		if (match_op("[") != 0) {
+			_class.expr_open_index(id.get_data(), lookahead);
+			// var_name "[" expression "]"
+			eat();
+			push(Aparser.$Cterm2);
+			push(Aparser.$Cexpression);
+		} else if (subrout_call(id) != 0) {
+		} else if (match_op(".$") != 0) {
+			// class_name ".$" var_name
+			eat();
+			if (lookahead.get_type() != Alexer.$Cidentifier) {
+				error("constant name expected.");
+				return;
+			}
+			_class.expr_constant(id.get_data(), 
+				lookahead.get_data(), lookahead);
+			eat();
+		} else {
+			// var_name
+			_class.expr_var(id.get_data(), lookahead);
+		}
+	} else if (lookahead.get_type() == Alexer.$Cquote) {
+		_class.expr_char_const(lookahead.get_data(), lookahead);
+		eat();
+	} else if (lookahead.get_type() == Alexer.$Cstring) {
+		_class.expr_str_const(lookahead.get_data(), lookahead);
+		eat();
+	} else if (lookahead.get_type() == Alexer.$Cnumber) {
+		// int_const
+		_class.expr_int_const(lookahead.get_data(), lookahead);
+		eat();
+	} else if (match_op("-") != 0) {
+		_class.expr_op(Aclass.$Cunaryminus, lookahead);
+		eat();
+		push(Aparser.$Cterm);
+	} else if (match_op("+") != 0) {
+		_class.expr_op(Aclass.$Cunaryplus, lookahead);
+		eat();
+		push(Aparser.$Cterm);
+	} else if (match_op("!") != 0) {
+		_class.expr_op(Aclass.$Clogicalnot, lookahead);
+		eat();
+		push(Aparser.$Cterm);
+	} else if (match_op("(") != 0) {
+		// "(" expression ")"
+		_class.expr_open_par();
+		eat();
+		push(Aparser.$Cterm1);
+		push(Aparser.$Cexpression);
+	} else {
+		error("unexpected term");
+		return;
+	}
+	return;
+}
+
+method int subrout_call(in Atoken id)
+{
+	var Atoken id2;
+
+	if (match_op("(") != 0) {
+		// subrout_call
+		sub_call(null, id);
+		return 1;
+	} else if (match_op(".") != 0) {
+		// subrout_call
+		id2 := id;
+		eat();
+		id := lookahead;
+		eat();
+		sub_call(id2, id);
+		return 1;
+	}
+	return 0;
+}
+	
+method void term1()
+{
+	// "(" expression ")"
+	pop();
+	if (match_op(")") != 0) {
+		_class.expr_close_par();
+		eat();
+		return;
+	}
+	error("')' expected after term");
+	return;
+}
+
+method void term2()
+{
+	// var_name "[" expression "]"
+	pop();
+	if (match_op("]") != 0) {
+		_class.expr_close_index();
+		eat();
+		return;
+	}
+	error("']' expected after term");
+	return;
+}
+
+method void sub_call(in Atoken class_, in Atoken id)
+{
+	// id "(" expr_:list ")"
+	if (match_op("(") == 0) {
+		error("'(' expected in subroutine call.");
+		return;
+	}
+	eat();
+	if (class_ != null) {
+		_class.expr_begin_sub_call(class_.get_data(), id.get_data(), 
+			lookahead);	
+	} else {
+		_class.expr_begin_sub_call(null, id.get_data(), lookahead);	
+	}
+	push(Aparser.$Csub_call1);
+	if (match_op(")") == 0) {
+		push(Aparser.$Cexpr_list);
+		push(Aparser.$Cexpression);
+		return;
+	}
+	_class.expr_finish_sub_call();	
+	return;
+}
+
+method void sub_call1()
+{
+	//  ")"
+	pop();
+	if (match_op(")") != 0) {
+		_class.expr_finish_sub_call();
+		eat();
+		return;
+	}
+	error("')' expected at end of subroutrine call");
+	return;
+}
+
+method void expr_list()
+{
+	pop();
+	if (status != 0) {
+		status := 0;
+		return;
+	}
+	if (match_op(",") != 0) {
+		eat();
+		_class.expr_next_expr(lookahead);
+		push(Aparser.$Cexpr_list1);
+		push(Aparser.$Cexpression);
+	}
+	return;
+}
+
+method void expr_list1()
+{
+	pop();
+	if (status != 0) {
+		return;
+	}
+	if (match_op(",") != 0) {
+		_class.expr_next_expr(lookahead);
+		eat();
+		push(Aparser.$Cexpr_list1);
+		push(Aparser.$Cexpression);
+	}
+	return;
+}
+
+method void eat()
+{
+	lex.shift();
+	if (lex.empty() != 0) {
+		lookstring := null;
+		lookahead := null;
+		return;
+	}
+	lookahead := lex.get_at(0);
+	if (lookahead == null) {
+		lookstring := null;
+		return;
+	}
+	while ((lookahead.get_type() == Alexer.$Cnewline) 
+		 	|| (lookahead.get_type() == Alexer.$Ccomment))
+	{
+		lex.shift();
+		if (lex.empty() != 0) {
+			lookstring := null;
+			lookahead := null;
+			return;
+		}
+		lookahead := lex.get_at(0);
+	}
+	lookstring := lookahead.get_data();
+	return;
+}
+
+method int match_id(in string id)
+{
+	if (lookahead.get_type() != Alexer.$Cidentifier) {
+		return 0;
+	}
+	if (id == null) {
+		return 1;
+	}
+	if (lookstring.compare(id) == 0) {
+		return 1;
+	}
+	return 0;
+}
+
+method int match_op(in string id)
+{
+	if (lookahead.get_type() != Alexer.$Coperator) {
+		return 0;
+	}
+	if (lookstring.compare(id) == 0) {
+		return 1;
+	}
+	return 0;
+}
+
+method int match_newline()
+{
+	if (lookahead.get_type() == Alexer.$Cnewline) {
+		return 1;
+	}
+	return 0;
+}
+
+method int match_str(in string id)
+{
+	var int t;
+	
+	t := lookahead.get_type();
+	if ((t != Alexer.$Cstring) && (t != Alexer.$Cquote)) {
+		return 0;
+	}
+	if ((id == null) || (lookstring.compare(id) == 0)) {
+		return 1;
+	}
+	return 0;
+}
+
+method int state_machine()
+{
+	var int state;
+
+	state := _states.get_last();
+
+	if (debug > 0) {	
+		console.log(lookstring);
+		console.log_int(state);
+	}
+	if (state == Aparser.$Croot) {
+		root();
+	} else if (state == Aparser.$Cclass_dec) {
+		class_dec();
+	} else if (state == Aparser.$Cstatement) {
+		statement();
+	} else if (state == Aparser.$Cstatements) {
+		statements();
+	} else if (state == Aparser.$Cexpression) {
+		expression();
+	} else if (state == Aparser.$Cexpression1) {
+		expression1();
+	} else if (state == Aparser.$Cterm) {
+		term();
+	} else if (state == Aparser.$Cterm1) {
+		term1();
+	} else if (state == Aparser.$Cterm2) {
+		term2();
+	} else if (state == Aparser.$Creturn_statem1) {
+		return_statem1();
+	} else if (state == Aparser.$Cexpr_list) {
+		expr_list();
+	} else if (state == Aparser.$Cexpr_list1) {
+		expr_list1();
+	} else if (state == Aparser.$Csub_call1) {
+		sub_call1();
+	} else if (state == Aparser.$Clet_statem1) {
+		let_statem1();
+	} else if (state == Aparser.$Clet_statem2) {
+		let_statem2();
+	} else if (state == Aparser.$Cdo_statem1) {
+		do_statem1();
+	} else if (state == Aparser.$Cwhile_statem1) {
+		while_statem1();
+	} else if (state == Aparser.$Cwhile_statem2) {
+		while_statem2();
+	} else if (state == Aparser.$Csubrout_body1) {
+		subrout_body1();
+	} else if (state == Aparser.$Csubroutine_dec) {
+		subroutine_dec();
+	} else if (state == Aparser.$Cclass_dec1) {
+		class_dec1();
+	} else if (state == Aparser.$Cif_statem1) {
+		if_statem1();
+	} else if (state == Aparser.$Celse_statem) {
+		else_statem();
+	} else if (state == Aparser.$Celse_statem1) {
+		else_statem1();
+	} else {
+		error("unexpected state");
+		lex.shift();
+		status := -1; 
+	}
+	return 1;
+}
+
+
+} // class
+

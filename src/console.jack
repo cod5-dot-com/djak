@@ -1,0 +1,22 @@
+class console {
+
+function void log(in string str)
+{
+	std.echo(str);
+	std.echo_nl();
+	return;
+}
+
+function void log_str(in string str)
+{
+	std.echo(str);
+	return;
+}
+
+function void log_int(in nt n)
+{
+	std.echo_int(n);
+	return;
+}
+
+} // class

@@ -1,0 +1,168 @@
+class buffer {
+field array _arr;
+field int size;
+field int pos;
+
+constructor buffer new(in int initial_size)
+{
+	var int i;
+	_arr := array.new(initial_size);
+	size := initial_size;
+	pos := 0;
+	i := 0;
+	while (i < initial_size) {
+		_arr[i] := 0;
+		i := i + 1;
+	}
+	return this;
+}
+
+method void dispose_all()
+{
+	var int i;
+	if (_arr == null) {
+		dispose();
+		return;
+	}
+	i := 0;
+	while (i < size) {
+		std.delete(_arr[i]);
+		i := i + 1;
+	}
+	dispose();
+	return;
+}
+
+virtual void dispose()
+{
+	if (_arr != null) {
+		_arr.dispose();
+		_arr := null;
+	}
+	std.free(this);
+	return;
+}
+
+method int length()
+{
+	return pos;
+}
+
+method int empty()
+{
+	if (pos > 0) {
+		return 0;
+	}
+	return 1;
+}
+
+method void set_at(in int idx, in array elem)
+{
+	var array a;
+	var int i;
+	if (idx >= size) {
+		a := array.new(idx + 8);
+		i := 0;
+		while (i < size) {
+			a[i] := _arr[i];
+			i := i + 1;
+		}
+		size := idx + 8;
+		while (i < size) {
+			a[i] := 0;
+			i := i + 1;
+		}
+
+		_arr.dispose();
+		_arr := a;
+	}
+
+	_arr[idx] := elem;
+	if ((idx + 1) > pos) {
+		pos := idx + 1;
+	}
+
+	return;
+}
+
+method void get_at(in int idx) 
+{
+	return _arr[idx];
+}
+
+method void push(in array elem)
+{
+	var int p;
+	p := pos + 1;
+	set_at(pos, elem);
+	pos := p;
+	return 0;
+}
+
+method void set_last(in array elem)
+{
+	if (pos < 1) {
+		return;
+	}
+	_arr[pos - 1] := elem;
+	return;
+}
+
+
+method array get_last()
+{
+	if (pos < 1) {
+		return null;
+	}
+	return _arr[pos - 1];
+}
+
+method array pop()
+{
+	var array elem;
+	elem := null;
+	if (pos > 0) {
+		pos := pos - 1;
+		elem := get_at(pos);
+	}
+	return elem;
+}
+
+method void unshift(in array elem)
+{
+	var int i;
+	var int p;
+	p := pos + 1;
+	set_at(pos, 0); // create space
+	i := pos;
+	while (i > 1) {
+		i := i - 1;
+		_arr[i] := _arr[i - 1];
+	}
+	_arr[0] := elem;
+	pos := p;
+	return 0;
+}
+
+method array shift()
+{
+	var array elem;
+	var int i;
+	var int p;
+	if (pos < 1) {
+		return null;
+	}
+	p := pos - 1;
+	elem := get_at(0);
+	i := 0;
+	while (i < pos) {
+		_arr[i] := _arr[i + 1];
+		i := i + 1;
+	}
+	pos := p;
+	
+	return elem;
+}
+
+} // class
+

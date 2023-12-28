@@ -1,0 +1,138 @@
+
+class hash {
+field array _arr;
+field int size;
+
+const int Cnext := 0;
+const int Chash := 1;
+const int Ckey := 2;
+const int Cvalue := 3;
+
+constructor hash new(in int size_)
+{
+	var int i; 
+	size := size_;
+	_arr := array.new(size);
+	i := 0;
+	while (i < size_) {
+		_arr[i] := null;
+		i := i + 1;
+	}
+	return this;
+}
+
+virtual void dispose()
+{
+	var int i; 
+	var array next;
+	var array cur;
+	i := 0;
+	while (i < size) {
+		cur := _arr[i];
+		while (cur != null) {
+			next := cur[hash.$Cnext];
+			cur.dispose();
+			cur := next;
+		}
+		_arr[i] := null;
+		i := i + 1;
+	}
+
+	_arr.dispose();
+	std.free(this);
+	return;
+}
+
+method array add(in string key, in array value)
+{
+	var int h, hh;
+	var array cur;
+	var array old;
+	var array next;
+	var array prev;
+	var array ret;
+	var int cmp;
+	h := key.get_hash();
+	hh := h;
+	h := h % size; 
+	old := _arr[h];
+	cur := null;
+	if (old == null) {
+		cur := array.new(4);
+		cur[hash.$Cnext] := null;
+		_arr[h] := cur;		
+	}
+	next := old;
+	prev := null;
+	ret := null;
+	while ((cur == null) && (next != null)) {
+		if (next[hash.$Chash] == hh) {
+			cmp := key.compare(next[hash.$Ckey]);
+			if (cmp > 0) {
+				cur := array.new(4);
+				cur[hash.$Cnext] := next;
+				if (prev == null) {
+					_arr[h] := cur;
+				} else {
+					prev[hash.$Cnext] := cur;
+				}		
+			} else if (cmp == 0) {
+				cur := next;
+				ret := next[hash.$Cvalue];
+			}	
+		} else if (next[hash.$Chash] > hh) {
+			cur := array.new(4);
+			cur[hash.$Cnext] := next;
+			if (prev == null) {
+				_arr[h] := cur;
+			} else {
+				prev[hash.$Cnext] := cur;
+			}		
+		}
+		prev := next;
+		next := next[hash.$Cnext];
+	}
+	
+	if (cur == null) {
+		cur := array.new(4);
+		cur[hash.$Cnext] := null;
+		if (prev == null) {
+			_arr[h] := cur;
+		} else {
+			prev[hash.$Cnext] := cur;
+		}		
+	}
+	cur[hash.$Chash] := hh;
+	cur[hash.$Ckey] := key;
+	cur[hash.$Cvalue] := value;
+	return ret;
+}
+
+
+method array get(in string key)
+{
+	var int h, hh;
+	var array next;
+	var int cmp;
+	h := key.get_hash();
+	hh := h;
+	h := h % size;
+	next := _arr[h];
+	while (next != null) {
+		if (next[hash.$Chash] == hh) {
+			cmp := key.compare(next[hash.$Ckey]);
+			if (cmp > 0) {
+				return null;
+			} else if (cmp == 0) {
+				return next[hash.$Cvalue];
+			}	
+		} else if (next[hash.$Chash] > hh) {
+			return null;
+		}
+		next := next[hash.$Cnext];
+	}
+	
+	return null;
+}
+
+} // class

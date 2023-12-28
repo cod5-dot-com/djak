@@ -1,0 +1,101 @@
+
+class Astatement {
+field int type;
+field Aexpr expr; 
+field buffer statements;
+field buffer else_stms;
+field Astatement parent;
+field int depth;
+
+constructor Astatement new(in int type_, in statement parent_, in int depth_)
+{
+	type := type_;
+	parent := parent_;
+	depth := depth_;	
+	expr := null;
+	statements := null;
+	else_stms := null;
+	return this;
+}
+
+virtual void dispose()
+{
+	std.free(this);
+	return;
+}
+
+method int get_type()
+{
+	return type;
+}
+
+method int get_depth()
+{	
+	return depth;
+}
+
+method Astatement get_parent()
+{	
+	return parent;
+}
+
+method buffer get_statements()
+{
+	return statements;
+}
+
+method buffer get_else()
+{
+	return else_stms;
+}
+
+method buffer get_expression()
+{
+	return expr;
+}
+
+method void add_else(in int type_)
+{
+	var Astatement st;
+	else_stms := buffer.new(2);
+	st := Astatement.new(type_, parent, depth);
+	add_statement(st);
+	return;
+}
+
+method void add_statement(in Astatement statement_)
+{
+	if (statements == null) {
+		statements := buffer.new(2);
+	}
+	if (else_stms != null) {
+		else_stms.push(statement_);
+	} else {
+		statements.push(statement_);
+	}
+	return;
+}
+
+method void set_expression(in Aexpr expr_)
+{
+	if (type == Aclass.$Cif) {
+		expr := expr_;	
+	} else if (type == Aclass.$Celseif) {
+		expr := expr_;	
+	} else if (type == Aclass.$Clet) {
+		expr := expr_;	
+	} else if (type == Aclass.$Cdo) {
+		expr := expr_;	
+	} else if (type == Aclass.$Cwhile) {
+		expr := expr_;	
+	} else if (type == Aclass.$Creturn) {
+		expr := expr_;	
+	} else {
+		console.log("DONT KNOW WAHT");
+		std.exit(-1);
+	}
+	return;
+}
+
+} // class
+

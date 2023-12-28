@@ -1,0 +1,46 @@
+
+class Abblock {
+field int index;
+field buffer body;
+
+constructor Abblock new(in int id)
+{
+	index := id;
+	body := null;
+	return this;
+}
+
+virtual void dispose()
+{
+	// FIXME
+	std.free(this);
+	return;
+}
+
+method void set_index(in int index_)
+{
+	index := index_;
+	return;
+}
+
+method int get_index()
+{
+	return index;
+}
+
+method buffer get_body()
+{
+	return body;
+}
+
+
+method void add(in Aexpr expr)
+{
+	if (body == null) {
+		body := buffer.new(4);
+	}
+	body.push(expr);
+	return;
+}
+
+} // class

@@ -1,0 +1,11 @@
+
+class main {
+const string HELLO := "hello";
+
+function void main()
+{
+	console.log("Hello World!");
+	console.log(main.$HELLO);
+	return;
+}
+}
